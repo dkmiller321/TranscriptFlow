@@ -5,7 +5,10 @@ A modern web application for extracting, managing, and exporting YouTube video t
 ## Features
 
 - **Transcript Extraction** - Extract transcripts from any YouTube video with captions
+- **Channel Extraction** - Extract transcripts from entire YouTube channels (up to 500 videos)
+- **Batch Processing** - Progress tracking with real-time updates for channel extractions
 - **Multiple Export Formats** - Download as TXT, SRT (subtitles), or JSON with timestamps
+- **Combined or Individual Files** - Export channel transcripts as a single merged file or ZIP of individual files
 - **Copy to Clipboard** - One-click copy of full transcript text
 - **Video Preview** - View thumbnail, title, channel, and duration
 - **Search Within Transcript** - Find and highlight specific words or phrases
@@ -32,7 +35,7 @@ A modern web application for extracting, managing, and exporting YouTube video t
 - Node.js 18+
 - Python 3.8+
 - Supabase account (for database and auth)
-- YouTube Data API key (optional, for video metadata)
+- YouTube Data API key (required for channel extraction, optional for video metadata)
 
 ## Installation
 
@@ -84,28 +87,40 @@ src/
 │   ├── (auth)/               # Auth routes (login, signup)
 │   ├── (main)/               # Protected routes (history, library, settings)
 │   ├── api/                  # API routes
-│   │   ├── extract/video/    # Transcript extraction endpoint
+│   │   ├── extract/
+│   │   │   ├── video/        # Single video extraction
+│   │   │   └── channel/      # Channel extraction + progress polling
 │   │   ├── history/          # History CRUD
 │   │   └── transcripts/      # Library CRUD
 │   └── page.tsx              # Home page
 ├── components/
 │   ├── features/             # Feature components
-│   │   ├── UrlInput.tsx
+│   │   ├── UrlInput.tsx      # URL input with channel detection
 │   │   ├── TranscriptViewer.tsx
 │   │   ├── VideoPreview.tsx
-│   │   └── ExportOptions.tsx
+│   │   ├── ExportOptions.tsx
+│   │   ├── ChannelProgress.tsx   # Channel extraction progress
+│   │   └── ChannelResults.tsx    # Channel results display
 │   ├── ui/                   # Reusable UI components
 │   └── layout/               # Layout components
 ├── hooks/                    # Custom React hooks
+│   ├── useExtraction.ts      # Video extraction hook
+│   └── useChannelExtraction.ts   # Channel extraction hook
 ├── lib/
 │   ├── supabase/             # Supabase client setup
 │   ├── youtube/              # YouTube extraction logic
+│   │   ├── channel.ts        # Channel fetching and batch processing
+│   │   ├── transcript.ts     # Video transcript fetching
+│   │   ├── parser.ts         # URL parsing utilities
+│   │   ├── export.ts         # Export format generation
+│   │   └── types.ts          # TypeScript interfaces
+│   ├── jobs/                 # Background job management
 │   └── utils/                # Utility functions
 ├── styles/                   # Global styles and tokens
 └── types/                    # TypeScript type definitions
 
 scripts/
-└── fetch-transcript.py       # Python script for transcript fetching
+└── fetch-transcript.py       # Python script (supports batch mode)
 ```
 
 ## API Routes
@@ -113,17 +128,27 @@ scripts/
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/extract/video` | POST | Extract transcript from YouTube URL |
+| `/api/extract/channel` | POST | Start channel extraction job |
+| `/api/extract/channel/[jobId]` | GET | Get channel extraction progress |
+| `/api/extract/channel/[jobId]` | DELETE | Cancel channel extraction |
 | `/api/history` | GET | Get user's extraction history |
 | `/api/transcripts` | GET/POST/PATCH/DELETE | Manage saved transcripts |
 | `/api/export` | POST | Format transcript for export |
 
 ## Supported YouTube URL Formats
 
+### Video URLs
 - `https://www.youtube.com/watch?v=VIDEO_ID`
 - `https://youtu.be/VIDEO_ID`
 - `https://www.youtube.com/shorts/VIDEO_ID`
 - `https://www.youtube.com/embed/VIDEO_ID`
 - Direct video ID (11 characters)
+
+### Channel URLs
+- `https://www.youtube.com/@username` (handle format)
+- `https://www.youtube.com/channel/UC...` (channel ID)
+- `https://www.youtube.com/c/channelname` (custom URL)
+- `https://www.youtube.com/user/username` (legacy user format)
 
 ## Export Formats
 
@@ -181,7 +206,9 @@ npm run lint      # Run ESLint
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key |
-| `YOUTUBE_API_KEY` | No | YouTube Data API key for video metadata |
+| `YOUTUBE_API_KEY` | For channels | YouTube Data API key (required for channel extraction, enhances video metadata)
+
+> **Note:** To use channel extraction, you must enable the YouTube Data API v3 in your [Google Cloud Console](https://console.developers.google.com/apis/api/youtube.googleapis.com).
 
 ## Contributing
 
