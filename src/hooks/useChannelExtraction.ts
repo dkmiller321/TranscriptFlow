@@ -43,12 +43,15 @@ const initialState: ChannelExtractionState = {
 export function useChannelExtraction() {
   const [state, setState] = useState<ChannelExtractionState>(initialState);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const retryCountRef = useRef<number>(0);
+  const maxRetries = 5;
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
+    retryCountRef.current = 0;
   }, []);
 
   const pollJobStatus = useCallback(async (jobId: string) => {
@@ -57,8 +60,18 @@ export function useChannelExtraction() {
       const result = await response.json();
 
       if (!result.success) {
+        // If job not found, retry a few times before giving up
+        // This handles race conditions where the job isn't fully created yet
+        if (result.error === 'Job not found' && retryCountRef.current < maxRetries) {
+          retryCountRef.current++;
+          console.log(`Job not found, retrying... (${retryCountRef.current}/${maxRetries})`);
+          return; // Don't throw, just wait for next poll
+        }
         throw new Error(result.error || 'Failed to get job status');
       }
+
+      // Reset retry count on successful poll
+      retryCountRef.current = 0;
 
       const { data } = result;
 
@@ -117,13 +130,17 @@ export function useChannelExtraction() {
         const { jobId } = result.data;
         setState((prev) => ({ ...prev, jobId }));
 
-        // Start polling for job status
-        pollingRef.current = setInterval(() => {
+        // Start polling for job status after a brief delay
+        // This gives the server time to fully initialize the job
+        setTimeout(() => {
+          // Initial poll
           pollJobStatus(jobId);
-        }, 1000);
 
-        // Initial poll
-        pollJobStatus(jobId);
+          // Continue polling every second
+          pollingRef.current = setInterval(() => {
+            pollJobStatus(jobId);
+          }, 1000);
+        }, 100);
       } catch (error) {
         setState((prev) => ({
           ...prev,
