@@ -10,6 +10,15 @@ interface PythonTranscriptResult {
   error?: string;
 }
 
+interface YtDlpVideoResult {
+  videoId?: string;
+  title?: string;
+  channelName?: string;
+  thumbnailUrl?: string;
+  durationSeconds?: number;
+  error?: string;
+}
+
 async function fetchTranscriptWithPython(videoId: string): Promise<TranscriptSegment[]> {
   const scriptPath = path.join(process.cwd(), 'scripts', 'fetch-transcript.py');
 
@@ -90,52 +99,36 @@ function generateSrt(segments: TranscriptSegment[]): string {
 }
 
 async function fetchVideoInfo(videoId: string): Promise<VideoInfo> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
+  const scriptPath = path.join(process.cwd(), 'scripts', 'yt-dlp-helper.py');
 
-  if (apiKey) {
-    try {
-      const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails&key=${apiKey}`
-      );
+  try {
+    const result = execSync(`python "${scriptPath}" video ${videoId}`, {
+      encoding: 'utf-8',
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 30000,
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.items && data.items.length > 0) {
-          const video = data.items[0];
-          const duration = parseDuration(video.contentDetails.duration);
+    const parsed: YtDlpVideoResult = JSON.parse(result);
 
-          return {
-            videoId,
-            title: video.snippet.title,
-            channelName: video.snippet.channelTitle,
-            thumbnailUrl: video.snippet.thumbnails.high?.url || getThumbnailUrl(videoId),
-            durationSeconds: duration,
-          };
-        }
-      }
-    } catch {
-      // Fall through to default
+    if (parsed.error) {
+      throw new Error(parsed.error);
     }
+
+    return {
+      videoId,
+      title: parsed.title || `YouTube Video (${videoId})`,
+      channelName: parsed.channelName || 'Unknown Channel',
+      thumbnailUrl: parsed.thumbnailUrl || getThumbnailUrl(videoId),
+      durationSeconds: parsed.durationSeconds || 0,
+    };
+  } catch {
+    // Return default info if yt-dlp fails
+    return {
+      videoId,
+      title: `YouTube Video (${videoId})`,
+      channelName: 'Unknown Channel',
+      thumbnailUrl: getThumbnailUrl(videoId),
+      durationSeconds: 0,
+    };
   }
-
-  // Return default info if API fails or no key
-  return {
-    videoId,
-    title: `YouTube Video (${videoId})`,
-    channelName: 'Unknown Channel',
-    thumbnailUrl: getThumbnailUrl(videoId),
-    durationSeconds: 0,
-  };
-}
-
-function parseDuration(duration: string): number {
-  // Parse ISO 8601 duration (PT1H2M3S)
-  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!match) return 0;
-
-  const hours = parseInt(match[1] || '0', 10);
-  const minutes = parseInt(match[2] || '0', 10);
-  const seconds = parseInt(match[3] || '0', 10);
-
-  return hours * 3600 + minutes * 60 + seconds;
 }

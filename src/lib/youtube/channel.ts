@@ -1,4 +1,6 @@
 import 'server-only';
+import { execSync } from 'child_process';
+import path from 'path';
 import type {
   ChannelInfo,
   ChannelVideoItem,
@@ -9,73 +11,46 @@ import { extractChannelId, getThumbnailUrl } from './parser';
 import { fetchTranscript } from './transcript';
 import { CHANNEL_LIMITS } from '@/lib/utils/constants';
 
-interface YouTubeChannelResponse {
-  items?: Array<{
+interface YtDlpChannelResult {
+  id?: string;
+  name?: string;
+  handle?: string;
+  thumbnailUrl?: string;
+  description?: string;
+  subscriberCount?: string;
+  videoCount?: number;
+  error?: string;
+}
+
+interface YtDlpVideosResult {
+  channelInfo?: {
     id: string;
-    snippet: {
-      title: string;
-      description: string;
-      customUrl?: string;
-      thumbnails: {
-        high?: { url: string };
-        default?: { url: string };
-      };
-    };
-    statistics?: {
-      videoCount: string;
-      subscriberCount: string;
-    };
-    contentDetails?: {
-      relatedPlaylists: {
-        uploads: string;
-      };
-    };
+    name: string;
+    handle?: string;
+    videoCount?: number;
+  };
+  videos?: Array<{
+    videoId: string;
+    title: string;
+    thumbnailUrl: string;
+    publishedAt: string;
+    durationSeconds?: number;
   }>;
+  totalFetched?: number;
+  error?: string;
 }
 
-interface YouTubePlaylistItemsResponse {
-  items?: Array<{
-    snippet: {
-      title: string;
-      publishedAt: string;
-      resourceId: {
-        videoId: string;
-      };
-      thumbnails: {
-        high?: { url: string };
-        default?: { url: string };
-      };
-    };
-    contentDetails?: {
-      videoId: string;
-    };
-  }>;
-  nextPageToken?: string;
-}
+function runYtDlpCommand(command: string): string {
+  const scriptPath = path.join(process.cwd(), 'scripts', 'yt-dlp-helper.py');
 
-interface YouTubeSearchResponse {
-  items?: Array<{
-    id: {
-      videoId: string;
-    };
-    snippet: {
-      title: string;
-      publishedAt: string;
-      thumbnails: {
-        high?: { url: string };
-        default?: { url: string };
-      };
-    };
-  }>;
-  nextPageToken?: string;
+  return execSync(`python "${scriptPath}" ${command}`, {
+    encoding: 'utf-8',
+    maxBuffer: 50 * 1024 * 1024,
+    timeout: 120000, // 2 minute timeout for channel operations
+  });
 }
 
 export async function resolveChannelId(input: string): Promise<string | null> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) {
-    throw new Error('YouTube API key is required for channel operations');
-  }
-
   const extracted = extractChannelId(input);
   if (!extracted) {
     return null;
@@ -86,182 +61,84 @@ export async function resolveChannelId(input: string): Promise<string | null> {
     return extracted.value;
   }
 
-  // For handle, custom_url, or user, we need to resolve via API
-  let searchParam = '';
+  // For handle, custom_url, or user, resolve via yt-dlp
+  let channelUrl: string;
 
   if (extracted.type === 'handle') {
-    // Use forHandle parameter for @username format
-    searchParam = `forHandle=${encodeURIComponent(extracted.value)}`;
-  } else if (extracted.type === 'custom_url' || extracted.type === 'user') {
-    // Use forUsername parameter
-    searchParam = `forUsername=${encodeURIComponent(extracted.value)}`;
+    channelUrl = `@${extracted.value}`;
+  } else {
+    channelUrl = extracted.value;
   }
 
   try {
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/channels?${searchParam}&part=id&key=${apiKey}`
-    );
+    const result = runYtDlpCommand(`channel "${channelUrl}"`);
+    const parsed: YtDlpChannelResult = JSON.parse(result);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      console.error('YouTube API error:', JSON.stringify(errorData, null, 2));
-
-      // Check for specific API errors
-      if (errorData?.error?.status === 'PERMISSION_DENIED') {
-        throw new Error('YouTube Data API is not enabled. Please enable it in the Google Cloud Console.');
-      }
-      if (response.status === 403) {
-        throw new Error('YouTube API access denied. Check your API key configuration.');
-      }
-      throw new Error('Failed to resolve channel ID from YouTube API');
+    if (parsed.error) {
+      console.error('yt-dlp error:', parsed.error);
+      return null;
     }
 
-    const data: YouTubeChannelResponse = await response.json();
-
-    if (data.items && data.items.length > 0) {
-      return data.items[0].id;
-    }
-
-    // If forHandle or forUsername didn't work, try a search
-    if (extracted.type === 'handle') {
-      const searchResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?q=${encodeURIComponent('@' + extracted.value)}&type=channel&part=id&maxResults=1&key=${apiKey}`
-      );
-
-      if (searchResponse.ok) {
-        const searchData = await searchResponse.json();
-        if (searchData.items && searchData.items.length > 0) {
-          return searchData.items[0].id.channelId;
-        }
-      }
-    }
-
-    return null;
+    return parsed.id || null;
   } catch (error) {
     console.error('Error resolving channel ID:', error);
-    throw error;
+    return null;
   }
 }
 
 export async function fetchChannelInfo(channelId: string): Promise<ChannelInfo> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) {
-    throw new Error('YouTube API key is required for channel operations');
-  }
+  try {
+    const result = runYtDlpCommand(`channel "${channelId}"`);
+    const parsed: YtDlpChannelResult = JSON.parse(result);
 
-  const response = await fetch(
-    `https://www.googleapis.com/youtube/v3/channels?id=${channelId}&part=snippet,statistics,contentDetails&key=${apiKey}`
-  );
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    if (errorData?.error?.status === 'PERMISSION_DENIED') {
-      throw new Error('YouTube Data API is not enabled. Please enable it in the Google Cloud Console.');
+    if (parsed.error) {
+      throw new Error(parsed.error);
     }
+
+    return {
+      id: parsed.id || channelId,
+      name: parsed.name || 'Unknown Channel',
+      handle: parsed.handle,
+      thumbnailUrl: parsed.thumbnailUrl || '',
+      videoCount: parsed.videoCount || 0,
+      subscriberCount: parsed.subscriberCount,
+      description: parsed.description,
+    };
+  } catch (error) {
+    console.error('Error fetching channel info:', error);
     throw new Error('Failed to fetch channel info');
   }
-
-  const data: YouTubeChannelResponse = await response.json();
-
-  if (!data.items || data.items.length === 0) {
-    throw new Error('Channel not found');
-  }
-
-  const channel = data.items[0];
-
-  return {
-    id: channel.id,
-    name: channel.snippet.title,
-    handle: channel.snippet.customUrl,
-    thumbnailUrl: channel.snippet.thumbnails.high?.url || channel.snippet.thumbnails.default?.url || '',
-    videoCount: parseInt(channel.statistics?.videoCount || '0', 10),
-    subscriberCount: channel.statistics?.subscriberCount,
-    description: channel.snippet.description,
-  };
 }
 
 export async function fetchChannelVideos(
   channelId: string,
   limit: number = CHANNEL_LIMITS.DEFAULT_VIDEOS
 ): Promise<ChannelVideoItem[]> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) {
-    throw new Error('YouTube API key is required for channel operations');
-  }
-
-  // First, get the uploads playlist ID
-  const channelResponse = await fetch(
-    `https://www.googleapis.com/youtube/v3/channels?id=${channelId}&part=contentDetails&key=${apiKey}`
-  );
-
-  if (!channelResponse.ok) {
-    const errorData = await channelResponse.json().catch(() => null);
-    if (errorData?.error?.status === 'PERMISSION_DENIED') {
-      throw new Error('YouTube Data API is not enabled. Please enable it in the Google Cloud Console.');
-    }
-    throw new Error('Failed to fetch channel details');
-  }
-
-  const channelData: YouTubeChannelResponse = await channelResponse.json();
-
-  if (!channelData.items || channelData.items.length === 0) {
-    throw new Error('Channel not found');
-  }
-
-  const uploadsPlaylistId = channelData.items[0].contentDetails?.relatedPlaylists.uploads;
-
-  if (!uploadsPlaylistId) {
-    throw new Error('Could not find uploads playlist');
-  }
-
-  const videos: ChannelVideoItem[] = [];
-  let nextPageToken: string | undefined;
   const effectiveLimit = Math.min(limit, CHANNEL_LIMITS.MAX_VIDEOS);
 
-  // Fetch videos from uploads playlist with pagination
-  while (videos.length < effectiveLimit) {
-    const maxResults = Math.min(50, effectiveLimit - videos.length);
-    let url = `https://www.googleapis.com/youtube/v3/playlistItems?playlistId=${uploadsPlaylistId}&part=snippet,contentDetails&maxResults=${maxResults}&key=${apiKey}`;
+  try {
+    const result = runYtDlpCommand(`videos "${channelId}" --limit ${effectiveLimit}`);
+    const parsed: YtDlpVideosResult = JSON.parse(result);
 
-    if (nextPageToken) {
-      url += `&pageToken=${nextPageToken}`;
+    if (parsed.error) {
+      throw new Error(parsed.error);
     }
 
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch channel videos');
+    if (!parsed.videos || parsed.videos.length === 0) {
+      return [];
     }
 
-    const data: YouTubePlaylistItemsResponse = await response.json();
-
-    if (!data.items || data.items.length === 0) {
-      break;
-    }
-
-    for (const item of data.items) {
-      if (videos.length >= effectiveLimit) break;
-
-      const videoId = item.contentDetails?.videoId || item.snippet.resourceId.videoId;
-
-      videos.push({
-        videoId,
-        title: item.snippet.title,
-        thumbnailUrl: item.snippet.thumbnails.high?.url ||
-                      item.snippet.thumbnails.default?.url ||
-                      getThumbnailUrl(videoId),
-        publishedAt: item.snippet.publishedAt,
-      });
-    }
-
-    nextPageToken = data.nextPageToken;
-
-    if (!nextPageToken) {
-      break;
-    }
+    return parsed.videos.map((video) => ({
+      videoId: video.videoId,
+      title: video.title,
+      thumbnailUrl: video.thumbnailUrl || getThumbnailUrl(video.videoId),
+      publishedAt: video.publishedAt || '',
+      durationSeconds: video.durationSeconds,
+    }));
+  } catch (error) {
+    console.error('Error fetching channel videos:', error);
+    throw new Error('Failed to fetch channel videos');
   }
-
-  return videos;
 }
 
 export type ProgressCallback = (progress: BatchProgress) => void;

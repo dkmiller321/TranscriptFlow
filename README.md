@@ -28,6 +28,7 @@ A modern web application for extracting, managing, and exporting YouTube video t
 | Database | Supabase (PostgreSQL) |
 | Authentication | Supabase Auth |
 | Transcript API | Python youtube-transcript-api |
+| YouTube Metadata | yt-dlp (no API key required) |
 | Styling | CSS Modules |
 
 ## Prerequisites
@@ -35,7 +36,6 @@ A modern web application for extracting, managing, and exporting YouTube video t
 - Node.js 18+
 - Python 3.8+
 - Supabase account (for database and auth)
-- YouTube Data API key (required for channel extraction, optional for video metadata)
 
 ## Installation
 
@@ -52,7 +52,7 @@ A modern web application for extracting, managing, and exporting YouTube video t
 
 3. **Install Python dependencies**
    ```bash
-   pip install youtube-transcript-api
+   pip install youtube-transcript-api yt-dlp
    ```
 
 4. **Set up environment variables**
@@ -62,7 +62,6 @@ A modern web application for extracting, managing, and exporting YouTube video t
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-   YOUTUBE_API_KEY=your_youtube_api_key  # Optional
    ```
 
 5. **Set up the database**
@@ -120,7 +119,8 @@ src/
 └── types/                    # TypeScript type definitions
 
 scripts/
-└── fetch-transcript.py       # Python script (supports batch mode)
+├── fetch-transcript.py       # Python script for transcript extraction
+└── yt-dlp-helper.py          # Python script for video/channel metadata (no API key)
 ```
 
 ## API Routes
@@ -206,9 +206,8 @@ npm run lint      # Run ESLint
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key |
-| `YOUTUBE_API_KEY` | For channels | YouTube Data API key (required for channel extraction, enhances video metadata)
 
-> **Note:** To use channel extraction, you must enable the YouTube Data API v3 in your [Google Cloud Console](https://console.developers.google.com/apis/api/youtube.googleapis.com).
+> **Note:** This application uses `yt-dlp` for YouTube metadata extraction, which does not require an API key. All features including channel extraction work without any YouTube API credentials.
 
 ## Contributing
 
@@ -225,5 +224,6 @@ This project is licensed under the MIT License.
 ## Acknowledgments
 
 - [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api) - Python library for fetching YouTube transcripts
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) - YouTube metadata extraction (no API key required)
 - [Supabase](https://supabase.com) - Backend as a service
 - [Next.js](https://nextjs.org) - React framework
