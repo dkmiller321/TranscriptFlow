@@ -1,40 +1,33 @@
 import 'server-only';
-import { execSync } from 'child_process';
-import path from 'path';
+import { YoutubeTranscript } from 'youtube-transcript';
 import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
 
-interface PythonTranscriptResult {
-  segments?: Array<{ text: string; offset: number; duration: number }>;
-  error?: string;
-}
-
-async function fetchTranscriptWithPython(videoId: string): Promise<TranscriptSegment[]> {
-  const scriptPath = path.join(process.cwd(), 'scripts', 'fetch-transcript.py');
-
+async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSegment[]> {
   try {
-    const result = execSync(`python "${scriptPath}" ${videoId}`, {
-      encoding: 'utf-8',
-      maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large transcripts
-      timeout: 60000, // 60 second timeout
-    });
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
 
-    const parsed: PythonTranscriptResult = JSON.parse(result);
-
-    if (parsed.error) {
-      throw new Error(parsed.error);
+    if (!transcript || transcript.length === 0) {
+      throw new Error('No transcript available for this video');
     }
 
-    if (!parsed.segments || parsed.segments.length === 0) {
-      throw new Error('No transcript segments returned');
-    }
-
-    return parsed.segments;
+    // Convert to our segment format
+    return transcript.map((item) => ({
+      text: item.text,
+      offset: Math.round(item.offset * 1000), // Convert to milliseconds
+      duration: Math.round(item.duration * 1000),
+    }));
   } catch (error) {
     if (error instanceof Error) {
-      // Check if it's a JSON parse error with actual content
-      if (error.message.includes('JSON')) {
+      // Provide user-friendly error messages
+      if (error.message.includes('disabled')) {
+        throw new Error('Transcripts are disabled for this video.');
+      }
+      if (error.message.includes('not found') || error.message.includes('unavailable')) {
+        throw new Error('Video not found or is unavailable.');
+      }
+      if (error.message.includes('Could not get')) {
         throw new Error(
           'No transcript available for this video. The video may have captions disabled or restricted.'
         );
@@ -52,8 +45,8 @@ export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptR
     throw new Error('Invalid YouTube URL or video ID');
   }
 
-  // Fetch transcript using Python youtube-transcript-api
-  const segments = await fetchTranscriptWithPython(videoId);
+  // Fetch transcript using youtube-transcript package
+  const segments = await fetchTranscriptFromYouTube(videoId);
 
   // Generate plain text
   const plainText = segments.map((s) => s.text).join(' ');
