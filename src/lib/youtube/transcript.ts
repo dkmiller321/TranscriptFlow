@@ -1,33 +1,73 @@
 import 'server-only';
-import { YoutubeTranscript } from 'youtube-transcript';
+import { Innertube } from 'youtubei.js';
 import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
 
+let innertubeInstance: Innertube | null = null;
+
+async function getInnertube(): Promise<Innertube> {
+  if (!innertubeInstance) {
+    innertubeInstance = await Innertube.create({
+      lang: 'en',
+      location: 'US',
+      retrieve_player: false,
+    });
+  }
+  return innertubeInstance;
+}
+
 async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSegment[]> {
   try {
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    const innertube = await getInnertube();
+    const info = await innertube.getInfo(videoId);
 
-    if (!transcript || transcript.length === 0) {
+    // Get transcript
+    const transcriptInfo = await info.getTranscript();
+
+    if (!transcriptInfo || !transcriptInfo.transcript) {
       throw new Error('No transcript available for this video');
     }
 
-    // Convert to our segment format
-    return transcript.map((item) => ({
-      text: item.text,
-      offset: Math.round(item.offset * 1000), // Convert to milliseconds
-      duration: Math.round(item.duration * 1000),
-    }));
+    const transcript = transcriptInfo.transcript;
+    const content = transcript.content;
+
+    if (!content || !content.body || !content.body.initial_segments) {
+      throw new Error('No transcript segments available');
+    }
+
+    const segments: TranscriptSegment[] = [];
+
+    for (const segment of content.body.initial_segments) {
+      if (segment.type === 'TranscriptSegment') {
+        const text = segment.snippet?.text || '';
+        const startMs = parseInt(segment.start_ms || '0', 10);
+        const endMs = parseInt(segment.end_ms || '0', 10);
+
+        segments.push({
+          text,
+          offset: startMs,
+          duration: endMs - startMs,
+        });
+      }
+    }
+
+    if (segments.length === 0) {
+      throw new Error('No transcript segments found');
+    }
+
+    return segments;
   } catch (error) {
     if (error instanceof Error) {
       // Provide user-friendly error messages
-      if (error.message.includes('disabled')) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('disabled') || msg.includes('not available')) {
         throw new Error('Transcripts are disabled for this video.');
       }
-      if (error.message.includes('not found') || error.message.includes('unavailable')) {
+      if (msg.includes('not found') || msg.includes('unavailable')) {
         throw new Error('Video not found or is unavailable.');
       }
-      if (error.message.includes('Could not get')) {
+      if (msg.includes('no transcript')) {
         throw new Error(
           'No transcript available for this video. The video may have captions disabled or restricted.'
         );
@@ -45,7 +85,7 @@ export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptR
     throw new Error('Invalid YouTube URL or video ID');
   }
 
-  // Fetch transcript using youtube-transcript package
+  // Fetch transcript using youtubei.js
   const segments = await fetchTranscriptFromYouTube(videoId);
 
   // Generate plain text
