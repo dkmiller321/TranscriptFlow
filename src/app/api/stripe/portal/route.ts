@@ -1,34 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
 
-const supabase = createClient(
+// Service role client for database operations
+const serviceClient = createServiceClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const authCookie = cookieStore.get('sb-jqyawimrdxgjovvaifzt-auth-token');
-
-    if (!authCookie) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Parse the auth token to get user
-    const tokenData = JSON.parse(authCookie.value);
-    const accessToken = tokenData[0];
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get user's Stripe customer ID
-    const { data: subscription } = await supabase
+    const { data: subscription } = await serviceClient
       .from('user_subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', user.id)

@@ -1,28 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { stripe, STRIPE_CONFIG } from '@/lib/stripe';
 import type { TierName } from '@/lib/usage/tiers';
 
-const supabase = createClient(
+// Service role client for database operations
+const serviceClient = createServiceClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const authCookie = cookieStore.get('sb-jqyawimrdxgjovvaifzt-auth-token');
-
-    if (!authCookie) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Parse the auth token to get user
-    const tokenData = JSON.parse(authCookie.value);
-    const accessToken = tokenData[0];
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
+    // Use server client for auth check
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -42,8 +34,8 @@ export async function POST(request: NextRequest) {
     // Get or create Stripe customer
     let customerId: string;
 
-    // Check if user already has a Stripe customer ID
-    const { data: subscription } = await supabase
+    // Check if user already has a Stripe customer ID (use service client for DB access)
+    const { data: subscription } = await serviceClient
       .from('user_subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', user.id)
@@ -62,7 +54,7 @@ export async function POST(request: NextRequest) {
       customerId = customer.id;
 
       // Save customer ID to database
-      await supabase
+      await serviceClient
         .from('user_subscriptions')
         .upsert({
           user_id: user.id,
