@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
-import { APP_NAME, ROUTES } from '@/lib/utils/constants';
+import { Logo } from '@/components/ui/Logo';
+import { ROUTES } from '@/lib/utils/constants';
 import styles from './Layout.module.css';
 
 export function Header() {
@@ -20,7 +21,7 @@ export function Header() {
     <header className={styles.header}>
       <div className={styles.headerContent}>
         <Link href={ROUTES.HOME} className={styles.logo}>
-          {APP_NAME}
+          <Logo size="md" />
         </Link>
 
         <nav className={styles.nav}>

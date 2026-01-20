@@ -1,6 +1,7 @@
 'use client';
 
 import { Header } from '@/components/layout/Header';
+import { Logo } from '@/components/ui/Logo';
 import { UrlInput } from '@/components/features/UrlInput';
 import { VideoPreview } from '@/components/features/VideoPreview';
 import { TranscriptViewer } from '@/components/features/TranscriptViewer';
@@ -80,9 +81,9 @@ export default function Home() {
 
         {/* Hero section */}
         <div className="text-center max-w-2xl mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent mb-4 tracking-tight">
-            TranscriptFlow
-          </h1>
+          <div className="flex justify-center mb-6">
+            <Logo size="xl" />
+          </div>
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
             Extract YouTube transcripts instantly. Supports videos and entire channels.
           </p>

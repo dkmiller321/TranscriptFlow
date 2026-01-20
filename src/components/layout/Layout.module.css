@@ -18,13 +18,13 @@
 }
 
 .logo {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  transition: opacity var(--transition-fast);
 }
 
 .logo:hover {
-  color: var(--color-primary);
+  opacity: 0.85;
 }
 
 .nav {
