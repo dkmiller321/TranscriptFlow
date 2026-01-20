@@ -115,7 +115,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   const { error, data } = await supabase
     .from('user_subscriptions')
-    .upsert(upsertData)
+    .upsert(upsertData, { onConflict: 'user_id' })
     .select();
 
   if (error) {
