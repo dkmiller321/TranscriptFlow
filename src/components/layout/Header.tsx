@@ -26,6 +26,9 @@ export function Header() {
         <nav className={styles.nav}>
           {!loading && (
             <>
+              <Link href={ROUTES.PRICING} className={styles.navLink}>
+                Pricing
+              </Link>
               {user ? (
                 <>
                   <Link href={ROUTES.HISTORY} className={styles.navLink}>

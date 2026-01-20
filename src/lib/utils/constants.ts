@@ -43,6 +43,7 @@ export const ROUTES = {
   HISTORY: '/history',
   LIBRARY: '/library',
   SETTINGS: '/settings',
+  PRICING: '/pricing',
   TERMS: '/terms',
   PRIVACY: '/privacy',
 } as const;

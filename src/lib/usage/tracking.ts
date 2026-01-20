@@ -104,6 +104,13 @@ export async function getUsageThisMonth(
   return data?.reduce((sum, row) => sum + (row.video_count || 1), 0) || 0;
 }
 
+export interface SubscriptionInfo {
+  tier: TierName;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  current_period_end: string | null;
+}
+
 /**
  * Get user's subscription tier
  */
@@ -128,6 +135,46 @@ export async function getUserTier(
 
   const tier = data.tier as string;
   return isValidTier(tier) ? tier : 'free';
+}
+
+/**
+ * Get full subscription info for a user
+ */
+export async function getSubscriptionInfo(
+  supabase: SupabaseClient,
+  userId: string | null
+): Promise<SubscriptionInfo> {
+  if (!userId) {
+    return {
+      tier: 'free',
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      current_period_end: null,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('user_subscriptions')
+    .select('tier, stripe_customer_id, stripe_subscription_id, current_period_end')
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) {
+    return {
+      tier: 'free',
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      current_period_end: null,
+    };
+  }
+
+  const tier = data.tier as string;
+  return {
+    tier: isValidTier(tier) ? tier : 'free',
+    stripe_customer_id: data.stripe_customer_id,
+    stripe_subscription_id: data.stripe_subscription_id,
+    current_period_end: data.current_period_end,
+  };
 }
 
 /**

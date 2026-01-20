@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { Button } from '@/components/ui/Button';
@@ -16,8 +16,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/Spinner';
 import { ROUTES, EXPORT_FORMATS } from '@/lib/utils/constants';
+import { TIERS, type TierName } from '@/lib/usage/tiers';
 
 interface UserSettings {
   user_id: string;
@@ -26,19 +29,46 @@ interface UserSettings {
   has_youtube_api_key: boolean;
 }
 
-export default function SettingsPage() {
+interface Subscription {
+  tier: TierName;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  current_period_end: string | null;
+}
+
+interface UsageStats {
+  today: number;
+  month: number;
+  subscription: Subscription | null;
+}
+
+function SettingsContent() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [exportFormat, setExportFormat] = useState('txt');
   const [savingApiKey, setSavingApiKey] = useState(false);
   const [savingFormat, setSavingFormat] = useState(false);
+  const [managingSubscription, setManagingSubscription] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const checkoutSuccess = searchParams.get('checkout') === 'success';
+
+  // Show success message on checkout completion
+  useEffect(() => {
+    if (checkoutSuccess) {
+      showMessage('success', 'Subscription activated successfully!');
+      // Clear the query param
+      router.replace('/settings');
+    }
+  }, [checkoutSuccess, router]);
 
   // Fetch user settings
   const fetchSettings = useCallback(async () => {
@@ -56,6 +86,19 @@ export default function SettingsPage() {
     }
   }, []);
 
+  // Fetch usage stats
+  const fetchUsageStats = useCallback(async () => {
+    try {
+      const response = await fetch('/api/usage');
+      if (response.ok) {
+        const data = await response.json();
+        setUsageStats(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch usage stats:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push(ROUTES.LOGIN);
@@ -65,8 +108,33 @@ export default function SettingsPage() {
   useEffect(() => {
     if (user) {
       fetchSettings();
+      fetchUsageStats();
     }
-  }, [user, fetchSettings]);
+  }, [user, fetchSettings, fetchUsageStats]);
+
+  const handleManageSubscription = async () => {
+    setManagingSubscription(true);
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      if (data.error) {
+        showMessage('error', data.error);
+        return;
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      showMessage('error', 'Failed to open billing portal');
+    } finally {
+      setManagingSubscription(false);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -358,6 +426,7 @@ export default function SettingsPage() {
 
         {/* Usage Tab */}
         <TabsContent value="usage" className="space-y-6">
+          {/* Current Plan Card */}
           <Card>
             <CardHeader>
               <CardTitle>Current Plan</CardTitle>
@@ -366,20 +435,114 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="font-semibold">Free Tier</p>
-                  <p className="text-sm text-muted-foreground">
-                    Basic features included
-                  </p>
-                </div>
-                <span className="px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                  Active
-                </span>
-              </div>
+              {(() => {
+                const currentTier = usageStats?.subscription?.tier || 'free';
+                const tierInfo = TIERS[currentTier];
+                const isPaid = currentTier !== 'free';
+                const periodEnd = usageStats?.subscription?.current_period_end;
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          isPaid ? 'bg-primary/20' : 'bg-secondary'
+                        }`}>
+                          {isPaid ? (
+                            <CrownIcon className="w-5 h-5 text-primary" />
+                          ) : (
+                            <UserIcon className="w-5 h-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold">{tierInfo.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {tierInfo.description}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={isPaid ? 'default' : 'secondary'}>
+                        Active
+                      </Badge>
+                    </div>
+
+                    {isPaid && periodEnd && (
+                      <p className="text-sm text-muted-foreground">
+                        Your subscription renews on{' '}
+                        {new Date(periodEnd).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
+                      {isPaid ? (
+                        <Button
+                          variant="secondary"
+                          onClick={handleManageSubscription}
+                          disabled={managingSubscription}
+                        >
+                          {managingSubscription ? 'Loading...' : 'Manage Subscription'}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          onClick={() => router.push('/pricing')}
+                        >
+                          Upgrade Plan
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
 
+          {/* Plan Features Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Plan Features</CardTitle>
+              <CardDescription>
+                What&apos;s included in your current plan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const currentTier = usageStats?.subscription?.tier || 'free';
+                const tierInfo = TIERS[currentTier];
+
+                return (
+                  <ul className="space-y-3">
+                    {tierInfo.features.map((feature, i) => (
+                      <li key={i} className="flex items-center gap-3">
+                        <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                          <svg
+                            className="w-3 h-3 text-green-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                        <span className="text-sm">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          {/* Usage Statistics Card */}
           <Card>
             <CardHeader>
               <CardTitle>Usage Statistics</CardTitle>
@@ -390,34 +553,51 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-2xl font-bold">--</p>
+                  <p className="text-2xl font-bold">{usageStats?.today ?? '--'}</p>
                   <p className="text-sm text-muted-foreground">
                     Extractions Today
                   </p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-2xl font-bold">--</p>
+                  <p className="text-2xl font-bold">{usageStats?.month ?? '--'}</p>
                   <p className="text-sm text-muted-foreground">
                     Extractions This Month
                   </p>
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Daily Limit</span>
-                  <span>
-                    {settings?.has_youtube_api_key ? 'Unlimited*' : '100 extractions'}
-                  </span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full w-0 bg-primary rounded-full" />
-                </div>
-                {settings?.has_youtube_api_key && (
-                  <p className="text-xs text-muted-foreground">
-                    * Subject to your YouTube API quota
-                  </p>
-                )}
-              </div>
+
+              {(() => {
+                const currentTier = usageStats?.subscription?.tier || 'free';
+                const tierLimits = TIERS[currentTier].limits;
+                const dailyLimit = tierLimits.videosPerDay;
+                const todayUsage = usageStats?.today ?? 0;
+                const percentage = dailyLimit === Infinity
+                  ? 0
+                  : Math.min(100, Math.round((todayUsage / dailyLimit) * 100));
+
+                return (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Daily Usage</span>
+                      <span>
+                        {todayUsage} / {dailyLimit === Infinity ? 'Unlimited' : dailyLimit}
+                      </span>
+                    </div>
+                    <Progress value={percentage} className="h-2" />
+                    {percentage >= 80 && dailyLimit !== Infinity && (
+                      <p className="text-xs text-yellow-500">
+                        You&apos;re approaching your daily limit.{' '}
+                        <button
+                          onClick={() => router.push('/pricing')}
+                          className="text-primary hover:underline"
+                        >
+                          Upgrade for more
+                        </button>
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -511,6 +691,14 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[400px]">Loading...</div>}>
+      <SettingsContent />
+    </Suspense>
   );
 }
 
@@ -629,6 +817,41 @@ function MonitorIcon({ className }: { className?: string }) {
       <rect width="20" height="14" x="2" y="3" rx="2" />
       <line x1="8" x2="16" y1="21" y2="21" />
       <line x1="12" x2="12" y1="17" y2="21" />
+    </svg>
+  );
+}
+
+function CrownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" />
+    </svg>
+  );
+}
+
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </svg>
   );
 }
