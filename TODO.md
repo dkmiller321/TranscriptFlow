@@ -20,12 +20,10 @@
   - [ ] Implement streaming responses with incremental results
   - [ ] Or use Vercel Pro + background job queue (Inngest, Trigger.dev)
 
-### Python Dependency
-- **Problem:** `fetch-transcript.py` won't work on Vercel serverless for large operations
-- **Options:**
-  1. [ ] Rewrite using Node.js transcript library (less reliable)
-  2. [ ] Deploy Python as separate microservice (recommended)
-  3. [ ] Use serverless Python runtime (AWS Lambda, Modal)
+### Python Dependency (RESOLVED)
+- **Solution:** Switched to `youtube-transcript` Node.js package
+- [x] Rewrite using Node.js transcript library
+- No longer need Python - works natively on Vercel serverless
 
 ---
 
@@ -192,7 +190,7 @@
 7. [ ] **Marketing page** - Create landing page for conversions
 
 ### Low Priority (Post-Launch)
-8. [ ] **Python worker** - Deploy separate service for large extractions
+8. [x] **Python worker** - No longer needed (switched to Node.js)
 9. [ ] **Mobile testing** - Verify responsive design
 10. [ ] **API documentation** - For Business tier users
 
