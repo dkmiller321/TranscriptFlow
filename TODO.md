@@ -80,7 +80,8 @@
 - [x] Implement subtle gradients
 - [x] Add micro-animations and transitions
 - [x] Make dark mode the default
-- [ ] Design new logo and brand assets
+- [x] Design new logo and brand assets
+- [x] Custom typography (Sora + Plus Jakarta Sans fonts)
 - [ ] Create marketing landing page
 
 ### UI Components Updated
@@ -187,7 +188,7 @@
 
 ### Medium Priority
 5. [ ] **Legal review** - Have lawyer review terms/privacy
-6. [ ] **Logo/branding** - Design professional logo
+6. [x] **Logo/branding** - Design professional logo
 7. [ ] **Marketing page** - Create landing page for conversions
 
 ### Low Priority (Post-Launch)
@@ -214,6 +215,30 @@
 - `src/app/api/usage/route.ts` - Returns subscription details
 - `src/components/layout/Header.tsx` - Added Pricing link
 - `middleware.ts` - Excluded webhook from auth
+
+---
+
+## Files Added/Modified (Logo & Typography)
+
+### New Files
+- `src/components/ui/Logo.tsx` - Logo component (icon + text variants)
+- `public/favicon.svg` - SVG favicon
+- `src/app/icon.tsx` - Dynamic PNG favicon (32x32)
+- `src/app/apple-icon.tsx` - Apple touch icon (180x180)
+
+### Modified Files
+- `src/app/layout.tsx` - Added Sora, Plus Jakarta Sans, JetBrains Mono fonts + enhanced metadata
+- `tailwind.config.js` - Registered font families (font-sans, font-display, font-mono)
+- `src/components/layout/Header.tsx` - Uses Logo component
+- `src/components/layout/Footer.tsx` - Uses Logo component
+- `src/app/page.tsx` - Hero uses Logo component
+- `src/app/pricing/page.tsx` - Headings use display font
+
+### Brand Assets
+- **Logo colors:** Cyan (#22d3ee) to Blue (#3b82f6) gradient
+- **Display font:** Sora (geometric, modern)
+- **Body font:** Plus Jakarta Sans (clean, readable)
+- **Mono font:** JetBrains Mono (for transcripts/code)
 
 ---
 
