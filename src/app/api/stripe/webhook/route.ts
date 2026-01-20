@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Webhook handler error:', error);
-    return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'Webhook handler failed', details: errorMessage }, { status: 500 });
   }
 }
 
@@ -81,33 +82,48 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const customerId = session.customer as string;
   const subscriptionId = session.subscription as string;
 
+  console.log('handleCheckoutCompleted called with:', { userId, tier, customerId, subscriptionId });
+
   if (!userId || !tier) {
     console.error('Missing metadata in checkout session');
-    return;
+    throw new Error('Missing metadata in checkout session');
   }
 
   // Get subscription details for period end
-  const subscriptionData = await stripe.subscriptions.retrieve(subscriptionId);
-  // In newer API versions, current_period_end is on the subscription items
-  const periodEnd = subscriptionData.items?.data?.[0]?.current_period_end ?? null;
-
-  // Update user subscription in database
-  const { error } = await supabase
-    .from('user_subscriptions')
-    .upsert({
-      user_id: userId,
-      tier,
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId,
-      current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
-      updated_at: new Date().toISOString(),
-    });
-
-  if (error) {
-    console.error('Failed to update subscription:', error);
-    throw error;
+  let periodEnd: number | null = null;
+  try {
+    const subscriptionData = await stripe.subscriptions.retrieve(subscriptionId);
+    console.log('Retrieved subscription:', JSON.stringify(subscriptionData, null, 2).slice(0, 500));
+    // In newer API versions, current_period_end is on the subscription items
+    periodEnd = subscriptionData.items?.data?.[0]?.current_period_end ?? null;
+    console.log('Period end:', periodEnd);
+  } catch (stripeError) {
+    console.error('Stripe API error:', stripeError);
+    throw stripeError;
   }
 
+  // Update user subscription in database
+  const upsertData = {
+    user_id: userId,
+    tier,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: subscriptionId,
+    current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+    updated_at: new Date().toISOString(),
+  };
+  console.log('Upserting to database:', upsertData);
+
+  const { error, data } = await supabase
+    .from('user_subscriptions')
+    .upsert(upsertData)
+    .select();
+
+  if (error) {
+    console.error('Database error:', JSON.stringify(error, null, 2));
+    throw new Error(`Database error: ${error.message}`);
+  }
+
+  console.log('Database upsert result:', data);
   console.log(`Subscription activated for user ${userId}: ${tier}`);
 }
 
