@@ -11,7 +11,6 @@ import { useExtraction } from '@/hooks/useExtraction';
 import { useChannelExtraction } from '@/hooks/useChannelExtraction';
 import { Spinner } from '@/components/ui/Spinner';
 import type { ChannelOutputFormat } from '@/lib/youtube/types';
-import styles from './page.module.css';
 
 export default function Home() {
   const {
@@ -72,15 +71,25 @@ export default function Home() {
   return (
     <>
       <Header />
-      <main className={styles.main}>
-        <div className={styles.hero}>
-          <h1 className={styles.title}>TranscriptFlow</h1>
-          <p className={styles.subtitle}>
+      <main className="min-h-[calc(100vh-64px)] flex flex-col items-center px-4 py-12 md:px-8 lg:px-12 max-w-6xl mx-auto relative">
+        {/* Background gradient effect */}
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl animate-pulse delay-1000" />
+        </div>
+
+        {/* Hero section */}
+        <div className="text-center max-w-2xl mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent mb-4 tracking-tight">
+            TranscriptFlow
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
             Extract YouTube transcripts instantly. Supports videos and entire channels.
           </p>
         </div>
 
-        <div className={styles.inputSection}>
+        {/* Input section */}
+        <div className="w-full max-w-2xl mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
           <UrlInput
             onSubmit={handleVideoExtract}
             onChannelSubmit={handleChannelExtract}
@@ -88,38 +97,47 @@ export default function Home() {
           />
         </div>
 
+        {/* Error message */}
         {error && (
-          <div className={styles.errorMessage}>
-            <p>{error}</p>
+          <div className="w-full max-w-2xl mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <p className="text-destructive text-sm text-center font-medium">{error}</p>
           </div>
         )}
 
+        {/* Loading state */}
         {isVideoLoading && (
-          <div className={styles.loadingState}>
+          <div className="flex flex-col items-center gap-4 py-12 animate-in fade-in duration-300">
             <Spinner size="lg" />
-            <p>Extracting transcript...</p>
+            <p className="text-muted-foreground text-sm">Extracting transcript...</p>
           </div>
         )}
 
+        {/* Channel progress */}
         {showChannelProgress && (
-          <ChannelProgress
-            progress={progress}
-            channelInfo={channelInfo}
-            onCancel={cancelChannel}
-          />
+          <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ChannelProgress
+              progress={progress}
+              channelInfo={channelInfo}
+              onCancel={cancelChannel}
+            />
+          </div>
         )}
 
+        {/* Channel results */}
         {showChannelResults && (
-          <ChannelResults
-            channelInfo={channelInfo!}
-            results={results}
-            outputFormat={outputFormat}
-            onReset={handleReset}
-          />
+          <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ChannelResults
+              channelInfo={channelInfo!}
+              results={results}
+              outputFormat={outputFormat}
+              onReset={handleReset}
+            />
+          </div>
         )}
 
+        {/* Video results */}
         {videoInfo && !isVideoLoading && !isChannelMode && (
-          <div className={styles.results}>
+          <div className="w-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <VideoPreview videoInfo={videoInfo} wordCount={wordCount} />
 
             <ExportOptions

@@ -1,75 +1,19 @@
-.main {
-  min-height: calc(100vh - var(--header-height));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--spacing-2xl);
-  max-width: var(--max-content-width);
-  margin: 0 auto;
+/* Custom animations for page elements */
+/* Most styles have been moved to Tailwind classes in page.tsx */
+
+/* Pulse animation for background blobs */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
 }
 
-.hero {
-  text-align: center;
-  max-width: 600px;
-  margin-bottom: var(--spacing-xl);
-}
-
-.title {
-  font-size: var(--text-3xl);
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: var(--spacing-md);
-}
-
-.subtitle {
-  font-size: var(--text-lg);
-  color: var(--color-text-secondary);
-  line-height: var(--leading-relaxed);
-}
-
-.inputSection {
-  width: 100%;
-  max-width: 700px;
-  margin-bottom: var(--spacing-xl);
-}
-
-.errorMessage {
-  width: 100%;
-  max-width: 700px;
-  padding: var(--spacing-md);
-  background-color: var(--color-error-light);
-  border: 1px solid var(--color-error);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--spacing-lg);
-}
-
-.errorMessage p {
-  color: var(--color-error);
-  font-size: var(--text-sm);
-  text-align: center;
-}
-
-.loadingState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-2xl);
-}
-
-.loadingState p {
-  color: var(--color-text-secondary);
-  font-size: var(--text-sm);
-}
-
-.results {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-  animation: fadeIn 0.3s ease;
-}
-
+/* Smooth fade-in animation */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -79,4 +23,22 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* For elements that need the fadeIn animation class */
+.fadeIn {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Staggered animation delay utility */
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
 }

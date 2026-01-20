@@ -4,6 +4,9 @@ import { resolveChannelId, fetchChannelInfo, fetchChannelVideos, fetchChannelTra
 import { createJob, updateJob, updateJobProgress, setJobAbortController, getJob } from '@/lib/jobs/store';
 import { CHANNEL_LIMITS } from '@/lib/utils/constants';
 import type { ChannelOutputFormat, BatchProgress } from '@/lib/youtube/types';
+import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit, trackUsage, getUserTier } from '@/lib/usage/tracking';
+import { getTierLimits } from '@/lib/usage/tiers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,17 +33,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate limit
+    // Get user if authenticated
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Check if channel extraction is allowed for user's tier
+    const rateLimitResult = await checkRateLimit(supabase, user?.id || null, 'channel_extraction');
+
+    // Get user's tier and limits
+    const tier = await getUserTier(supabase, user?.id || null);
+    const tierLimits = getTierLimits(tier);
+
+    // Check if channel extraction feature is allowed for this tier
+    if (!tierLimits.channelExtraction) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Channel extraction is not available on the free tier. Please upgrade to Pro or Business to access this feature.',
+          tierRestriction: true,
+        },
+        { status: 403 }
+      );
+    }
+
+    // Check rate limit (daily video extraction limit)
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Rate limit exceeded. Please upgrade your plan or wait until the limit resets.',
+          rateLimit: {
+            remaining: rateLimitResult.remaining,
+            resetAt: rateLimitResult.resetAt.toISOString(),
+          },
+        },
+        { status: 429 }
+      );
+    }
+
+    // Cap the limit to the user's tier maximum
     const effectiveLimit = Math.min(
       Math.max(limit, CHANNEL_LIMITS.MIN_VIDEOS),
-      CHANNEL_LIMITS.MAX_VIDEOS
+      Math.min(CHANNEL_LIMITS.MAX_VIDEOS, tierLimits.maxChannelVideos)
     );
 
     // Create a job for tracking
     const job = createJob(url, effectiveLimit, format);
 
-    // Start processing in the background
-    processChannelExtraction(job.id, url, effectiveLimit).catch((error) => {
+    // Start processing in the background with user context for tracking
+    processChannelExtraction(job.id, url, effectiveLimit, user?.id || null).catch((error) => {
       console.error('Channel extraction failed:', error);
       updateJob(job.id, {
         progress: {
@@ -60,6 +101,10 @@ export async function POST(request: NextRequest) {
         jobId: job.id,
         status: 'started',
       },
+      rateLimit: {
+        remaining: rateLimitResult.remaining,
+        resetAt: rateLimitResult.resetAt.toISOString(),
+      },
     });
   } catch (error) {
     console.error('Channel extraction error:', error);
@@ -76,7 +121,8 @@ export async function POST(request: NextRequest) {
 async function processChannelExtraction(
   jobId: string,
   url: string,
-  limit: number
+  limit: number,
+  userId: string | null
 ) {
   const abortController = new AbortController();
   setJobAbortController(jobId, abortController);
@@ -122,6 +168,9 @@ async function processChannelExtraction(
       abortController.signal
     );
 
+    const successCount = results.filter((r) => r.transcript?.status === 'success').length;
+    const failedCount = results.filter((r) => r.transcript?.status !== 'success').length;
+
     // Update final results
     updateJob(jobId, {
       results,
@@ -129,10 +178,17 @@ async function processChannelExtraction(
         status: 'completed',
         currentVideoIndex: videos.length,
         totalVideos: videos.length,
-        successCount: results.filter((r) => r.transcript?.status === 'success').length,
-        failedCount: results.filter((r) => r.transcript?.status !== 'success').length,
+        successCount,
+        failedCount,
       },
     });
+
+    // Track successful usage (count total videos extracted)
+    if (successCount > 0) {
+      const { createClient } = await import('@/lib/supabase/server');
+      const supabase = createClient();
+      await trackUsage(supabase, userId, 'channel_extraction', successCount);
+    }
   } catch (error) {
     if (abortController.signal.aborted) {
       // Job was cancelled, status already set

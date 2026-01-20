@@ -1,0 +1,119 @@
+.container {
+  min-height: calc(100vh - var(--header-height));
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+  padding: var(--spacing-2xl);
+}
+
+.header {
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.title {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+}
+
+.lastUpdated {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.disclaimer {
+  background-color: var(--color-warning-light, #fef3c7);
+  border: 1px solid var(--color-warning, #f59e0b);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.disclaimer p {
+  color: var(--color-warning-dark, #92400e);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  margin: 0;
+}
+
+.content {
+  color: var(--color-text);
+  line-height: var(--leading-relaxed);
+}
+
+.section {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.sectionTitle {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+}
+
+.subsectionTitle {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
+}
+
+.content p {
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+}
+
+.content ul {
+  list-style-type: disc;
+  margin-left: var(--spacing-xl);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-secondary);
+}
+
+.content li {
+  margin-bottom: var(--spacing-sm);
+}
+
+.content a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.content a:hover {
+  text-decoration: none;
+}
+
+.footer {
+  margin-top: var(--spacing-2xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.footerLink {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.footerLink:hover {
+  text-decoration: underline;
+}
+
+.contactInfo {
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-top: var(--spacing-md);
+}
+
+.contactInfo p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.contactInfo p:last-child {
+  margin-bottom: 0;
+}

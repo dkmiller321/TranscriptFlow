@@ -2,9 +2,16 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { TranscriptSegment } from '@/lib/youtube/types';
 import { generateExportContent } from '@/lib/youtube/export';
-import styles from './Features.module.css';
 
 interface ExportOptionsProps {
   segments: TranscriptSegment[];
@@ -67,26 +74,128 @@ export function ExportOptions({
   };
 
   return (
-    <div className={styles.exportOptions}>
-      <Button variant="primary" onClick={copyToClipboard}>
-        {copiedFormat === 'clipboard' ? 'Copied!' : 'Copy to Clipboard'}
-      </Button>
+    <Card className="bg-card/50 backdrop-blur-sm border-border/50 shadow-lg">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Export Transcript
+        </CardTitle>
+        <CardDescription>
+          Copy to clipboard or download in your preferred format
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="flex flex-col gap-4">
+          {/* Copy to Clipboard */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="primary"
+                  onClick={copyToClipboard}
+                  className="w-full transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {copiedFormat === 'clipboard' ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                      Copy to Clipboard
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Copy plain text transcript to clipboard</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-      <div className={styles.exportDivider} />
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Download</span>
+            <Separator className="flex-1" />
+          </div>
 
-      <span className={styles.exportLabel}>Download:</span>
+          {/* Download Buttons */}
+          <div className="grid grid-cols-3 gap-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    onClick={() => downloadFile('txt')}
+                    className="flex flex-col h-auto py-3 gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="text-xs font-semibold">
+                      {copiedFormat === 'txt' ? 'Done!' : '.TXT'}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Plain text format - easy to read</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-      <Button variant="secondary" size="sm" onClick={() => downloadFile('txt')}>
-        {copiedFormat === 'txt' ? 'Downloaded!' : '.TXT'}
-      </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    onClick={() => downloadFile('srt')}
+                    className="flex flex-col h-auto py-3 gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                    </svg>
+                    <span className="text-xs font-semibold">
+                      {copiedFormat === 'srt' ? 'Done!' : '.SRT'}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Subtitle format with timestamps</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-      <Button variant="secondary" size="sm" onClick={() => downloadFile('srt')}>
-        {copiedFormat === 'srt' ? 'Downloaded!' : '.SRT'}
-      </Button>
-
-      <Button variant="secondary" size="sm" onClick={() => downloadFile('json')}>
-        {copiedFormat === 'json' ? 'Downloaded!' : '.JSON'}
-      </Button>
-    </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    onClick={() => downloadFile('json')}
+                    className="flex flex-col h-auto py-3 gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                    <span className="text-xs font-semibold">
+                      {copiedFormat === 'json' ? 'Done!' : '.JSON'}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Structured data for developers</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

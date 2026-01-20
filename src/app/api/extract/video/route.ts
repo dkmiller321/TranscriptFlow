@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchTranscript } from '@/lib/youtube/transcript';
 import { extractVideoId } from '@/lib/youtube/parser';
 import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit, trackUsage } from '@/lib/usage/tracking';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,6 +27,22 @@ export async function POST(request: NextRequest) {
     // Get user if authenticated
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+
+    // Check rate limit before processing
+    const rateLimitResult = await checkRateLimit(supabase, user?.id || null, 'video_extraction');
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Rate limit exceeded. Please upgrade your plan or wait until the limit resets.',
+          rateLimit: {
+            remaining: rateLimitResult.remaining,
+            resetAt: rateLimitResult.resetAt.toISOString(),
+          },
+        },
+        { status: 429 }
+      );
+    }
 
     // Create initial history entry
     let historyId: string | null = null;
@@ -63,6 +80,12 @@ export async function POST(request: NextRequest) {
           .eq('id', historyId);
       }
 
+      // Track successful usage
+      await trackUsage(supabase, user?.id || null, 'video_extraction', 1);
+
+      // Get updated rate limit info
+      const updatedRateLimit = await checkRateLimit(supabase, user?.id || null, 'video_extraction');
+
       return NextResponse.json({
         success: true,
         data: {
@@ -72,6 +95,10 @@ export async function POST(request: NextRequest) {
           plainText: result.plainText,
           srtContent: result.srtContent,
           wordCount: result.wordCount,
+        },
+        rateLimit: {
+          remaining: updatedRateLimit.remaining,
+          resetAt: updatedRateLimit.resetAt.toISOString(),
         },
       });
     } catch (error) {
