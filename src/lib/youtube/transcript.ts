@@ -3,13 +3,6 @@ import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
 
-interface CaptionTrack {
-  baseUrl: string;
-  languageCode: string;
-  name?: { simpleText?: string };
-  kind?: string;
-}
-
 async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSegment[]> {
   try {
     // Fetch the video page to get caption track info
@@ -26,40 +19,33 @@ async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSe
 
     const html = await videoPageResponse.text();
 
-    // Extract captions data from the page
-    // Look for the captionTracks array in the player response
-    const startMarker = '"captionTracks":';
-    const startIndex = html.indexOf(startMarker);
-
-    if (startIndex === -1) {
-      // Check if video has captions disabled message
+    // Check if captions exist
+    if (!html.includes('"captionTracks"')) {
       if (html.includes('"playabilityStatus"') && html.includes('"reason"')) {
         throw new Error('Video is not available or has restricted access');
       }
       throw new Error('No captions available for this video');
     }
 
-    // Extract the JSON array by finding matching brackets
-    const arrayStart = html.indexOf('[', startIndex);
-    if (arrayStart === -1) {
-      throw new Error('No captions available for this video');
+    // Extract baseUrl directly using regex - more reliable than JSON parsing
+    // Look for English captions first
+    let baseUrlMatch = html.match(/"baseUrl":"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"[^}]*"languageCode":"en"/);
+
+    if (!baseUrlMatch) {
+      // Try any caption track
+      baseUrlMatch = html.match(/"baseUrl":"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
     }
 
-    // Find the matching closing bracket
-    let depth = 0;
-    let arrayEnd = arrayStart;
-    for (let i = arrayStart; i < html.length; i++) {
-      if (html[i] === '[') depth++;
-      if (html[i] === ']') depth--;
-      if (depth === 0) {
-        arrayEnd = i + 1;
-        break;
-      }
+    if (!baseUrlMatch) {
+      throw new Error('No caption URL found');
     }
 
-    const jsonStr = html.slice(arrayStart, arrayEnd).replace(/\\u0026/g, '&');
-    const captionTracks: CaptionTrack[] = JSON.parse(jsonStr);
-    return await fetchFromCaptionTrack(captionTracks);
+    // Decode the URL (handle unicode escapes)
+    const baseUrl = baseUrlMatch[1]
+      .replace(/\\u0026/g, '&')
+      .replace(/\\\//g, '/');
+
+    return await fetchFromBaseUrl(baseUrl);
   } catch (error) {
     if (error instanceof Error) {
       throw error;
@@ -68,34 +54,9 @@ async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSe
   }
 }
 
-async function fetchFromCaptionTrack(captionTracks: CaptionTrack[]): Promise<TranscriptSegment[]> {
-  if (!captionTracks || captionTracks.length === 0) {
-    throw new Error('No caption tracks available');
-  }
-
-  // Prefer English, then any available track
-  let selectedTrack = captionTracks.find(
-    (track) => track.languageCode === 'en' || track.languageCode?.startsWith('en')
-  );
-
-  if (!selectedTrack) {
-    // Try to find auto-generated English
-    selectedTrack = captionTracks.find(
-      (track) => track.kind === 'asr' && (track.languageCode === 'en' || track.languageCode?.startsWith('en'))
-    );
-  }
-
-  if (!selectedTrack) {
-    // Fall back to first available track
-    selectedTrack = captionTracks[0];
-  }
-
-  if (!selectedTrack?.baseUrl) {
-    throw new Error('No valid caption track URL found');
-  }
-
-  // Fetch the transcript XML
-  const transcriptUrl = selectedTrack.baseUrl + '&fmt=json3';
+async function fetchFromBaseUrl(baseUrl: string): Promise<TranscriptSegment[]> {
+  // Fetch the transcript in JSON3 format
+  const transcriptUrl = baseUrl + '&fmt=json3';
   const transcriptResponse = await fetch(transcriptUrl, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
