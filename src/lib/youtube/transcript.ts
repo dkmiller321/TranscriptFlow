@@ -1,81 +1,143 @@
 import 'server-only';
-import { Innertube } from 'youtubei.js';
 import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
 
-let innertubeInstance: Innertube | null = null;
-
-async function getInnertube(): Promise<Innertube> {
-  if (!innertubeInstance) {
-    innertubeInstance = await Innertube.create({
-      lang: 'en',
-      location: 'US',
-      retrieve_player: false,
-    });
-  }
-  return innertubeInstance;
+interface CaptionTrack {
+  baseUrl: string;
+  languageCode: string;
+  name?: { simpleText?: string };
+  kind?: string;
 }
 
 async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSegment[]> {
   try {
-    const innertube = await getInnertube();
-    const info = await innertube.getInfo(videoId);
+    // Fetch the video page to get caption track info
+    const videoPageResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
 
-    // Get transcript
-    const transcriptInfo = await info.getTranscript();
-
-    if (!transcriptInfo || !transcriptInfo.transcript) {
-      throw new Error('No transcript available for this video');
+    if (!videoPageResponse.ok) {
+      throw new Error('Failed to fetch video page');
     }
 
-    const transcript = transcriptInfo.transcript;
-    const content = transcript.content;
+    const html = await videoPageResponse.text();
 
-    if (!content || !content.body || !content.body.initial_segments) {
-      throw new Error('No transcript segments available');
-    }
+    // Extract captions data from the page
+    const captionsMatch = html.match(/"captions":\s*(\{[^}]+?"playerCaptionsTracklistRenderer"[^}]+?\})/);
 
-    const segments: TranscriptSegment[] = [];
-
-    for (const segment of content.body.initial_segments) {
-      if (segment.type === 'TranscriptSegment') {
-        const text = segment.snippet?.text || '';
-        const startMs = parseInt(segment.start_ms || '0', 10);
-        const endMs = parseInt(segment.end_ms || '0', 10);
-
-        segments.push({
-          text,
-          offset: startMs,
-          duration: endMs - startMs,
-        });
+    if (!captionsMatch) {
+      // Try alternative pattern
+      const altMatch = html.match(/"captionTracks":\s*(\[[^\]]+\])/);
+      if (!altMatch) {
+        throw new Error('No captions available for this video');
       }
+
+      const captionTracks: CaptionTrack[] = JSON.parse(altMatch[1]);
+      return await fetchFromCaptionTrack(captionTracks);
     }
 
-    if (segments.length === 0) {
-      throw new Error('No transcript segments found');
+    // Parse the captions JSON
+    const captionsJson = html.match(/"captionTracks":\s*(\[[^\]]+\])/);
+    if (!captionsJson) {
+      throw new Error('No caption tracks found');
     }
 
-    return segments;
+    const captionTracks: CaptionTrack[] = JSON.parse(captionsJson[1]);
+    return await fetchFromCaptionTrack(captionTracks);
   } catch (error) {
     if (error instanceof Error) {
-      // Provide user-friendly error messages
-      const msg = error.message.toLowerCase();
-      if (msg.includes('disabled') || msg.includes('not available')) {
-        throw new Error('Transcripts are disabled for this video.');
-      }
-      if (msg.includes('not found') || msg.includes('unavailable')) {
-        throw new Error('Video not found or is unavailable.');
-      }
-      if (msg.includes('no transcript')) {
-        throw new Error(
-          'No transcript available for this video. The video may have captions disabled or restricted.'
-        );
-      }
       throw error;
     }
     throw new Error('Failed to fetch transcript');
   }
+}
+
+async function fetchFromCaptionTrack(captionTracks: CaptionTrack[]): Promise<TranscriptSegment[]> {
+  if (!captionTracks || captionTracks.length === 0) {
+    throw new Error('No caption tracks available');
+  }
+
+  // Prefer English, then any available track
+  let selectedTrack = captionTracks.find(
+    (track) => track.languageCode === 'en' || track.languageCode?.startsWith('en')
+  );
+
+  if (!selectedTrack) {
+    // Try to find auto-generated English
+    selectedTrack = captionTracks.find(
+      (track) => track.kind === 'asr' && (track.languageCode === 'en' || track.languageCode?.startsWith('en'))
+    );
+  }
+
+  if (!selectedTrack) {
+    // Fall back to first available track
+    selectedTrack = captionTracks[0];
+  }
+
+  if (!selectedTrack?.baseUrl) {
+    throw new Error('No valid caption track URL found');
+  }
+
+  // Fetch the transcript XML
+  const transcriptUrl = selectedTrack.baseUrl + '&fmt=json3';
+  const transcriptResponse = await fetch(transcriptUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    },
+  });
+
+  if (!transcriptResponse.ok) {
+    throw new Error('Failed to fetch transcript data');
+  }
+
+  const transcriptData = await transcriptResponse.json();
+
+  if (!transcriptData.events) {
+    throw new Error('No transcript events found');
+  }
+
+  const segments: TranscriptSegment[] = [];
+
+  for (const event of transcriptData.events) {
+    // Skip events without text segments
+    if (!event.segs) continue;
+
+    const text = event.segs
+      .map((seg: { utf8?: string }) => seg.utf8 || '')
+      .join('')
+      .trim();
+
+    if (!text || text === '\n') continue;
+
+    segments.push({
+      text: decodeHTMLEntities(text),
+      offset: event.tStartMs || 0,
+      duration: event.dDurationMs || 0,
+    });
+  }
+
+  if (segments.length === 0) {
+    throw new Error('No transcript segments found');
+  }
+
+  return segments;
+}
+
+function decodeHTMLEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/\\n/g, ' ')
+    .replace(/\n/g, ' ')
+    .trim();
 }
 
 export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptResult> {
@@ -85,7 +147,7 @@ export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptR
     throw new Error('Invalid YouTube URL or video ID');
   }
 
-  // Fetch transcript using youtubei.js
+  // Fetch transcript directly from YouTube
   const segments = await fetchTranscriptFromYouTube(videoId);
 
   // Generate plain text
