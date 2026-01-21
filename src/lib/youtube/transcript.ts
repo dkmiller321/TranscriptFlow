@@ -27,26 +27,20 @@ async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSe
     const html = await videoPageResponse.text();
 
     // Extract captions data from the page
-    const captionsMatch = html.match(/"captions":\s*(\{[^}]+?"playerCaptionsTracklistRenderer"[^}]+?\})/);
+    // Look for the captionTracks array in the player response
+    const captionsMatch = html.match(/"captionTracks":\s*(\[[^\]]+\])/);
 
     if (!captionsMatch) {
-      // Try alternative pattern
-      const altMatch = html.match(/"captionTracks":\s*(\[[^\]]+\])/);
-      if (!altMatch) {
-        throw new Error('No captions available for this video');
+      // Check if video has captions disabled message
+      if (html.includes('"playabilityStatus"') && html.includes('"reason"')) {
+        throw new Error('Video is not available or has restricted access');
       }
-
-      const captionTracks: CaptionTrack[] = JSON.parse(altMatch[1]);
-      return await fetchFromCaptionTrack(captionTracks);
+      throw new Error('No captions available for this video');
     }
 
-    // Parse the captions JSON
-    const captionsJson = html.match(/"captionTracks":\s*(\[[^\]]+\])/);
-    if (!captionsJson) {
-      throw new Error('No caption tracks found');
-    }
-
-    const captionTracks: CaptionTrack[] = JSON.parse(captionsJson[1]);
+    // Parse with unicode handling - replace escaped unicode for ampersand
+    const jsonStr = captionsMatch[1].replace(/\\u0026/g, '&');
+    const captionTracks: CaptionTrack[] = JSON.parse(jsonStr);
     return await fetchFromCaptionTrack(captionTracks);
   } catch (error) {
     if (error instanceof Error) {
