@@ -6,7 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:chromium": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:webkit": "playwright test --project=webkit",
+    "test:auth": "playwright test tests/e2e/auth.spec.ts",
+    "test:video": "playwright test tests/e2e/video-extraction.spec.ts",
+    "test:channel": "playwright test tests/e2e/channel-extraction.spec.ts",
+    "test:transcripts": "playwright test tests/e2e/transcript-management.spec.ts",
+    "test:billing": "playwright test tests/e2e/subscription-billing.spec.ts",
+    "test:report": "playwright show-report",
+    "test:codegen": "playwright codegen http://localhost:3000"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.8",
@@ -33,7 +47,8 @@
     "youtube-caption-extractor": "^1.9.1"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^20.19.30",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "autoprefixer": "^10.4.23",
@@ -41,6 +56,7 @@
     "eslint-config-next": "14.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "wait-on": "^8.0.1"
   }
 }

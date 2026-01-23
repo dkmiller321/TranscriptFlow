@@ -1,0 +1,288 @@
+# GitLab CI/CD Pipeline for TranscriptFlow E2E Tests
+# Runs tests in parallel across multiple browsers and shards
+
+# Use Playwright's official Docker image with all browsers pre-installed
+image: mcr.microsoft.com/playwright:v1.48.0-jammy
+
+# Define pipeline stages
+stages:
+  - setup
+  - test
+  - report
+
+# Global variables
+variables:
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/ms-playwright"
+  # Test environment
+  TEST_BASE_URL: "http://localhost:3000"
+  NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+  NODE_ENV: "test"
+
+# Cache node_modules and Playwright browsers between jobs
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm
+    - node_modules
+    - ms-playwright
+
+# Workflow rules: Run on main branch and merge requests
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_TAG
+
+# ============================================
+# SETUP STAGE: Install dependencies
+# ============================================
+install:
+  stage: setup
+  script:
+    - echo "Installing dependencies..."
+    - npm ci --prefer-offline --no-audit
+    - npx playwright install --with-deps
+  artifacts:
+    paths:
+      - node_modules
+      - ms-playwright
+    expire_in: 1 hour
+
+# ============================================
+# TEST STAGE: Run tests in parallel
+# ============================================
+
+# Template for test jobs
+.test_template: &test_template
+  stage: test
+  needs:
+    - install
+  before_script:
+    # Start Next.js dev server in background
+    - echo "Starting Next.js application..."
+    - npm run dev &
+    - APP_PID=$!
+    - echo "App PID: $APP_PID"
+
+    # Wait for app to be ready
+    - echo "Waiting for app to be ready..."
+    - npx wait-on http://localhost:3000 --timeout 60000 || (echo "App failed to start" && exit 1)
+    - echo "App is ready!"
+  after_script:
+    # Kill the app process
+    - kill $APP_PID 2>/dev/null || true
+  artifacts:
+    when: always
+    paths:
+      - playwright-report/
+      - test-results/
+    expire_in: 30 days
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+
+# ============================================
+# Browser-based parallel jobs
+# ============================================
+
+test:chromium:
+  <<: *test_template
+  script:
+    - echo "Running tests on Chromium..."
+    - npx playwright test --project=chromium --reporter=html,line
+  variables:
+    BROWSER: "chromium"
+
+test:firefox:
+  <<: *test_template
+  script:
+    - echo "Running tests on Firefox..."
+    - npx playwright test --project=firefox --reporter=html,line
+  variables:
+    BROWSER: "firefox"
+
+test:webkit:
+  <<: *test_template
+  script:
+    - echo "Running tests on WebKit..."
+    - npx playwright test --project=webkit --reporter=html,line
+  variables:
+    BROWSER: "webkit"
+
+# ============================================
+# Sharded tests for faster execution
+# Split tests across multiple runners
+# ============================================
+
+test:chromium:shard-1:
+  <<: *test_template
+  script:
+    - echo "Running Chromium tests - Shard 1 of 3"
+    - npx playwright test --project=chromium --shard=1/3 --reporter=html,line
+  variables:
+    SHARD: "1/3"
+  only:
+    - main
+    - merge_requests
+
+test:chromium:shard-2:
+  <<: *test_template
+  script:
+    - echo "Running Chromium tests - Shard 2 of 3"
+    - npx playwright test --project=chromium --shard=2/3 --reporter=html,line
+  variables:
+    SHARD: "2/3"
+  only:
+    - main
+    - merge_requests
+
+test:chromium:shard-3:
+  <<: *test_template
+  script:
+    - echo "Running Chromium tests - Shard 3 of 3"
+    - npx playwright test --project=chromium --shard=3/3 --reporter=html,line
+  variables:
+    SHARD: "3/3"
+  only:
+    - main
+    - merge_requests
+
+# ============================================
+# Test suite-specific jobs (alternative approach)
+# ============================================
+
+test:auth:
+  <<: *test_template
+  script:
+    - echo "Running authentication tests..."
+    - npx playwright test tests/e2e/auth.spec.ts --reporter=html,line
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - when: manual
+  allow_failure: false
+
+test:video-extraction:
+  <<: *test_template
+  script:
+    - echo "Running video extraction tests..."
+    - npx playwright test tests/e2e/video-extraction.spec.ts --reporter=html,line
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - when: manual
+
+test:channel-extraction:
+  <<: *test_template
+  script:
+    - echo "Running channel extraction tests..."
+    - npx playwright test tests/e2e/channel-extraction.spec.ts --reporter=html,line
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - when: manual
+  allow_failure: true  # Some tests require Pro/Business tier
+
+test:transcript-management:
+  <<: *test_template
+  script:
+    - echo "Running transcript management tests..."
+    - npx playwright test tests/e2e/transcript-management.spec.ts --reporter=html,line
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - when: manual
+
+test:subscription-billing:
+  <<: *test_template
+  script:
+    - echo "Running subscription and billing tests..."
+    - npx playwright test tests/e2e/subscription-billing.spec.ts --reporter=html,line
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - when: manual
+  allow_failure: true  # Some tests require active subscriptions
+
+# ============================================
+# Mobile viewport tests
+# ============================================
+
+test:mobile-chrome:
+  <<: *test_template
+  script:
+    - echo "Running tests on Mobile Chrome..."
+    - npx playwright test --project="Mobile Chrome" --reporter=html,line
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - when: manual
+  allow_failure: true
+
+test:mobile-safari:
+  <<: *test_template
+  script:
+    - echo "Running tests on Mobile Safari..."
+    - npx playwright test --project="Mobile Safari" --reporter=html,line
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - when: manual
+  allow_failure: true
+
+# ============================================
+# REPORT STAGE: Combine and publish results
+# ============================================
+
+publish-report:
+  stage: report
+  needs:
+    - test:chromium
+    - test:firefox
+    - test:webkit
+  script:
+    - echo "Publishing test reports..."
+    - echo "Reports available in artifacts"
+  artifacts:
+    when: always
+    paths:
+      - playwright-report/
+      - test-results/
+    reports:
+      junit: test-results/junit.xml
+    expire_in: 30 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ============================================
+# Optional: Scheduled nightly tests
+# ============================================
+
+test:nightly:
+  <<: *test_template
+  script:
+    - echo "Running comprehensive nightly tests..."
+    - npx playwright test --reporter=html,line
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  allow_failure: false
+  retry:
+    max: 1
+
+# ============================================
+# Optional: Performance testing
+# ============================================
+
+test:performance:
+  <<: *test_template
+  script:
+    - echo "Running performance tests..."
+    - npx playwright test --grep="@performance" --reporter=html,line
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - when: manual
+  allow_failure: true

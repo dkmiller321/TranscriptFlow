@@ -61,8 +61,8 @@ export const TIERS: Record<TierName, TierInfo> = {
       prioritySupport: false,
     },
     pricing: {
-      monthly: 9,
-      yearly: 79,
+      monthly: 9.99,
+      yearly: 99.99,
       stripePriceIdMonthly: process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
       stripePriceIdYearly: process.env.STRIPE_PRO_YEARLY_PRICE_ID,
     },
@@ -86,8 +86,8 @@ export const TIERS: Record<TierName, TierInfo> = {
       prioritySupport: true,
     },
     pricing: {
-      monthly: 29,
-      yearly: 290,
+      monthly: 29.99,
+      yearly: 299.99,
       stripePriceIdMonthly: process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID,
       stripePriceIdYearly: process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID,
     },

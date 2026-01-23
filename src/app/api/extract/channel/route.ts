@@ -37,6 +37,17 @@ export async function POST(request: NextRequest) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Channel extraction requires authentication
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Authentication required. Please sign in to use channel extraction.',
+        },
+        { status: 401 }
+      );
+    }
+
     // Check if channel extraction is allowed for user's tier
     const rateLimitResult = await checkRateLimit(supabase, user?.id || null, 'channel_extraction');
 
