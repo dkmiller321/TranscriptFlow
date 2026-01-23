@@ -3,114 +3,52 @@ import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
 
-async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSegment[]> {
+interface PythonTranscriptSegment {
+  text: string;
+  start: number;
+  duration: number;
+}
+
+async function fetchTranscriptFromAPI(videoId: string): Promise<TranscriptSegment[]> {
+  // Construct absolute URL for server-side fetches
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+  const apiUrl = `${baseUrl}/api/transcript?videoId=${encodeURIComponent(videoId)}`;
+
+  console.log('[Transcript] Fetching from:', apiUrl);
+
   try {
-    // Fetch the video page to get caption track info
-    const videoPageResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    const response = await fetch(apiUrl, {
+      method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'application/json',
       },
+      cache: 'no-store',
     });
 
-    if (!videoPageResponse.ok) {
-      throw new Error('Failed to fetch video page');
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to fetch transcript');
     }
 
-    const html = await videoPageResponse.text();
-
-    // Check if captions exist
-    if (!html.includes('"captionTracks"')) {
-      if (html.includes('"playabilityStatus"') && html.includes('"reason"')) {
-        throw new Error('Video is not available or has restricted access');
-      }
-      throw new Error('No captions available for this video');
+    if (!result.segments || result.segments.length === 0) {
+      throw new Error('No transcript segments returned');
     }
 
-    // Extract baseUrl directly using regex - more reliable than JSON parsing
-    // Look for English captions first
-    let baseUrlMatch = html.match(/"baseUrl":"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"[^}]*"languageCode":"en"/);
-
-    if (!baseUrlMatch) {
-      // Try any caption track
-      baseUrlMatch = html.match(/"baseUrl":"(https:\/\/www\.youtube\.com\/api\/timedtext[^"]+)"/);
-    }
-
-    if (!baseUrlMatch) {
-      throw new Error('No caption URL found');
-    }
-
-    // Decode the URL (handle unicode escapes)
-    const baseUrl = baseUrlMatch[1]
-      .replace(/\\u0026/g, '&')
-      .replace(/\\\//g, '/');
-
-    return await fetchFromBaseUrl(baseUrl);
+    return result.segments.map((seg: PythonTranscriptSegment) => ({
+      text: seg.text,
+      offset: Math.round(seg.start * 1000), // Convert to milliseconds
+      duration: Math.round(seg.duration * 1000),
+    }));
   } catch (error) {
+    console.error('[Transcript] Error:', error);
     if (error instanceof Error) {
       throw error;
     }
     throw new Error('Failed to fetch transcript');
   }
-}
-
-async function fetchFromBaseUrl(baseUrl: string): Promise<TranscriptSegment[]> {
-  // Fetch the transcript in JSON3 format
-  const transcriptUrl = baseUrl + '&fmt=json3';
-  const transcriptResponse = await fetch(transcriptUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    },
-  });
-
-  if (!transcriptResponse.ok) {
-    throw new Error('Failed to fetch transcript data');
-  }
-
-  const transcriptData = await transcriptResponse.json();
-
-  if (!transcriptData.events) {
-    throw new Error('No transcript events found');
-  }
-
-  const segments: TranscriptSegment[] = [];
-
-  for (const event of transcriptData.events) {
-    // Skip events without text segments
-    if (!event.segs) continue;
-
-    const text = event.segs
-      .map((seg: { utf8?: string }) => seg.utf8 || '')
-      .join('')
-      .trim();
-
-    if (!text || text === '\n') continue;
-
-    segments.push({
-      text: decodeHTMLEntities(text),
-      offset: event.tStartMs || 0,
-      duration: event.dDurationMs || 0,
-    });
-  }
-
-  if (segments.length === 0) {
-    throw new Error('No transcript segments found');
-  }
-
-  return segments;
-}
-
-function decodeHTMLEntities(text: string): string {
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/\\n/g, ' ')
-    .replace(/\n/g, ' ')
-    .trim();
 }
 
 export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptResult> {
@@ -120,8 +58,8 @@ export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptR
     throw new Error('Invalid YouTube URL or video ID');
   }
 
-  // Fetch transcript directly from YouTube
-  const segments = await fetchTranscriptFromYouTube(videoId);
+  // Fetch transcript using Node.js API endpoint
+  const segments = await fetchTranscriptFromAPI(videoId);
 
   // Generate plain text
   const plainText = segments.map((s) => s.text).join(' ');

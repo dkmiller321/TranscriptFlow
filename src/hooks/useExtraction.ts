@@ -25,6 +25,15 @@ const initialState: ExtractionState = {
   historyId: null,
 };
 
+// Simplify IP blocking error messages for users
+function simplifyErrorMessage(errorMessage: string): string {
+  if (errorMessage.includes('blocking requests from your IP') ||
+      errorMessage.includes('cloud provider')) {
+    return 'YouTube is temporarily blocking transcript requests from our servers. Please try again in a few minutes, or try a different video.';
+  }
+  return errorMessage;
+}
+
 export function useExtraction() {
   const [state, setState] = useState<ExtractionState>(initialState);
 
@@ -57,7 +66,8 @@ export function useExtraction() {
 
       return result.data;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Extraction failed';
+      const rawMessage = error instanceof Error ? error.message : 'Extraction failed';
+      const errorMessage = simplifyErrorMessage(rawMessage);
       setState((prev) => ({
         ...prev,
         isLoading: false,
