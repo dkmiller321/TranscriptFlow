@@ -1,50 +1,44 @@
 import 'server-only';
+import { execSync } from 'child_process';
+import path from 'path';
 import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
 
-interface PythonTranscriptSegment {
-  text: string;
-  start: number;
-  duration: number;
+interface PythonTranscriptResult {
+  segments?: Array<{ text: string; offset: number; duration: number }>;
+  error?: string;
 }
 
-async function fetchTranscriptFromAPI(videoId: string): Promise<TranscriptSegment[]> {
-  // Construct absolute URL for server-side fetches
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-
-  const apiUrl = `${baseUrl}/api/transcript?videoId=${encodeURIComponent(videoId)}`;
-
-  console.log('[Transcript] Fetching from:', apiUrl);
+async function fetchTranscriptWithPython(videoId: string): Promise<TranscriptSegment[]> {
+  const scriptPath = path.join(process.cwd(), 'scripts', 'fetch-transcript.py');
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-      cache: 'no-store',
+    const result = execSync(`python "${scriptPath}" ${videoId}`, {
+      encoding: 'utf-8',
+      maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large transcripts
+      timeout: 60000, // 60 second timeout
     });
 
-    const result = await response.json();
+    const parsed: PythonTranscriptResult = JSON.parse(result);
 
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || 'Failed to fetch transcript');
+    if (parsed.error) {
+      throw new Error(parsed.error);
     }
 
-    if (!result.segments || result.segments.length === 0) {
+    if (!parsed.segments || parsed.segments.length === 0) {
       throw new Error('No transcript segments returned');
     }
 
-    return result.segments.map((seg: PythonTranscriptSegment) => ({
-      text: seg.text,
-      offset: Math.round(seg.start * 1000), // Convert to milliseconds
-      duration: Math.round(seg.duration * 1000),
-    }));
+    return parsed.segments;
   } catch (error) {
-    console.error('[Transcript] Error:', error);
     if (error instanceof Error) {
+      // Check if it's a JSON parse error with actual content
+      if (error.message.includes('JSON')) {
+        throw new Error(
+          'No transcript available for this video. The video may have captions disabled or restricted.'
+        );
+      }
       throw error;
     }
     throw new Error('Failed to fetch transcript');
@@ -58,8 +52,8 @@ export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptR
     throw new Error('Invalid YouTube URL or video ID');
   }
 
-  // Fetch transcript using Node.js API endpoint
-  const segments = await fetchTranscriptFromAPI(videoId);
+  // Fetch transcript using Python youtube-transcript-api
+  const segments = await fetchTranscriptWithPython(videoId);
 
   // Generate plain text
   const plainText = segments.map((s) => s.text).join(' ');
