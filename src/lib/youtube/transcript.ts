@@ -4,17 +4,86 @@ import path from 'path';
 import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
+import { createClient } from '@/lib/supabase/server';
 
 interface PythonTranscriptResult {
   segments?: Array<{ text: string; offset: number; duration: number }>;
   error?: string;
 }
 
+/**
+ * Check if transcript exists in cache
+ */
+async function getCachedTranscript(videoId: string): Promise<TranscriptSegment[] | null> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('transcript_cache')
+      .select('segments')
+      .eq('video_id', videoId)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    console.log(`[Transcript Cache] Cache HIT for video: ${videoId}`);
+    return data.segments as TranscriptSegment[];
+  } catch (error) {
+    console.log(`[Transcript Cache] Cache MISS for video: ${videoId}`);
+    return null;
+  }
+}
+
+/**
+ * Save transcript to cache
+ */
+async function saveCachedTranscript(videoId: string, segments: TranscriptSegment[]): Promise<void> {
+  try {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('transcript_cache')
+      .upsert({
+        video_id: videoId,
+        segments,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'video_id'
+      });
+
+    if (error) {
+      console.error(`[Transcript Cache] Failed to cache transcript for ${videoId}:`, error);
+    } else {
+      console.log(`[Transcript Cache] Cached transcript for video: ${videoId}`);
+    }
+  } catch (error) {
+    console.error(`[Transcript Cache] Error caching transcript:`, error);
+  }
+}
+
 async function fetchTranscriptWithPython(videoId: string): Promise<TranscriptSegment[]> {
   const scriptPath = path.join(process.cwd(), 'scripts', 'fetch-transcript.py');
 
+  // Get proxy configuration from environment variables
+  const proxyType = process.env.PROXY_TYPE; // 'webshare', 'packetstream', or 'generic'
+  const proxyUsername = process.env.PROXY_USERNAME;
+  const proxyPassword = process.env.PROXY_PASSWORD;
+  const proxyServer = process.env.PROXY_SERVER; // e.g., 'proxy.packetstream.io:31112'
+
+  // Build command with proxy credentials if available
+  let command = `python "${scriptPath}" ${videoId}`;
+
+  if (proxyType && proxyUsername && proxyPassword) {
+    command += ` "${proxyType}" "${proxyUsername}" "${proxyPassword}"`;
+
+    // Add proxy server for packetstream/generic
+    if (proxyServer && (proxyType === 'packetstream' || proxyType === 'generic')) {
+      command += ` "${proxyServer}"`;
+    }
+  }
+
   try {
-    const result = execSync(`python "${scriptPath}" ${videoId}`, {
+    const result = execSync(command, {
       encoding: 'utf-8',
       maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large transcripts
       timeout: 60000, // 60 second timeout
@@ -52,8 +121,17 @@ export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptR
     throw new Error('Invalid YouTube URL or video ID');
   }
 
-  // Fetch transcript using Python youtube-transcript-api
-  const segments = await fetchTranscriptWithPython(videoId);
+  // Check cache first
+  let segments = await getCachedTranscript(videoId);
+
+  // If not in cache, fetch from YouTube and cache it
+  if (!segments) {
+    segments = await fetchTranscriptWithPython(videoId);
+    // Save to cache asynchronously (don't wait for it)
+    saveCachedTranscript(videoId, segments).catch((err) => {
+      console.error('[Transcript] Failed to save to cache:', err);
+    });
+  }
 
   // Generate plain text
   const plainText = segments.map((s) => s.text).join(' ');

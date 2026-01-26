@@ -101,6 +101,13 @@ const nextConfig = {
       },
     ];
   },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Exclude ytdl-core from client-side bundle
+      config.externals.push('@distube/ytdl-core');
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;
