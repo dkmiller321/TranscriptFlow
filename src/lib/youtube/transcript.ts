@@ -29,7 +29,7 @@ async function getCachedTranscript(videoId: string): Promise<TranscriptSegment[]
 
     console.log(`[Transcript Cache] Cache HIT for video: ${videoId}`);
     return data.segments as TranscriptSegment[];
-  } catch (error) {
+  } catch {
     console.log(`[Transcript Cache] Cache MISS for video: ${videoId}`);
     return null;
   }
