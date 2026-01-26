@@ -1,15 +1,9 @@
 import 'server-only';
-import { execSync } from 'child_process';
-import path from 'path';
+import { fetchTranscript as fetchYouTubeTranscript } from 'youtube-transcript-plus';
 import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
 import { createClient } from '@/lib/supabase/server';
-
-interface PythonTranscriptResult {
-  segments?: Array<{ text: string; offset: number; duration: number }>;
-  error?: string;
-}
 
 /**
  * Check if transcript exists in cache
@@ -61,49 +55,26 @@ async function saveCachedTranscript(videoId: string, segments: TranscriptSegment
   }
 }
 
-async function fetchTranscriptWithPython(videoId: string): Promise<TranscriptSegment[]> {
-  const scriptPath = path.join(process.cwd(), 'scripts', 'fetch-transcript.py');
-
-  // Get proxy configuration from environment variables
-  const proxyType = process.env.PROXY_TYPE; // 'webshare', 'packetstream', or 'generic'
-  const proxyUsername = process.env.PROXY_USERNAME;
-  const proxyPassword = process.env.PROXY_PASSWORD;
-  const proxyServer = process.env.PROXY_SERVER; // e.g., 'proxy.packetstream.io:31112'
-
-  // Build command with proxy credentials if available
-  let command = `python "${scriptPath}" ${videoId}`;
-
-  if (proxyType && proxyUsername && proxyPassword) {
-    command += ` "${proxyType}" "${proxyUsername}" "${proxyPassword}"`;
-
-    // Add proxy server for packetstream/generic
-    if (proxyServer && (proxyType === 'packetstream' || proxyType === 'generic')) {
-      command += ` "${proxyServer}"`;
-    }
-  }
-
+async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSegment[]> {
   try {
-    const result = execSync(command, {
-      encoding: 'utf-8',
-      maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large transcripts
-      timeout: 60000, // 60 second timeout
+    const transcriptItems = await fetchYouTubeTranscript(videoId, {
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     });
 
-    const parsed: PythonTranscriptResult = JSON.parse(result);
-
-    if (parsed.error) {
-      throw new Error(parsed.error);
-    }
-
-    if (!parsed.segments || parsed.segments.length === 0) {
+    if (!transcriptItems || transcriptItems.length === 0) {
       throw new Error('No transcript segments returned');
     }
 
-    return parsed.segments;
+    // Map the youtube-transcript-plus format to our TranscriptSegment format
+    return transcriptItems.map((item) => ({
+      text: item.text,
+      offset: item.offset,
+      duration: item.duration,
+    }));
   } catch (error) {
     if (error instanceof Error) {
-      // Check if it's a JSON parse error with actual content
-      if (error.message.includes('JSON')) {
+      // Check for common YouTube transcript errors
+      if (error.message.includes('disabled') || error.message.includes('Transcript is disabled') || error.message.includes('No transcript')) {
         throw new Error(
           'No transcript available for this video. The video may have captions disabled or restricted.'
         );
@@ -126,7 +97,7 @@ export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptR
 
   // If not in cache, fetch from YouTube and cache it
   if (!segments) {
-    segments = await fetchTranscriptWithPython(videoId);
+    segments = await fetchTranscriptFromYouTube(videoId);
     // Save to cache asynchronously (don't wait for it)
     saveCachedTranscript(videoId, segments).catch((err) => {
       console.error('[Transcript] Failed to save to cache:', err);
