@@ -4,6 +4,7 @@ import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
 import { createClient } from '@/lib/supabase/server';
+import { createProxiedFetch, isProxyConfigured } from '@/lib/proxy';
 
 /**
  * Check if transcript exists in cache
@@ -57,13 +58,28 @@ async function saveCachedTranscript(videoId: string, segments: TranscriptSegment
 
 async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSegment[]> {
   try {
+    // Create proxied fetch if proxy is configured
+    const proxiedFetch = isProxyConfigured() ? createProxiedFetch() : undefined;
+
+    if (proxiedFetch) {
+      console.log(`[Transcript] Fetching transcript for ${videoId} via proxy`);
+    } else {
+      console.log(`[Transcript] Fetching transcript for ${videoId} (no proxy)`);
+    }
+
     const transcriptItems = await fetchYouTubeTranscript(videoId, {
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      // Use proxied fetch for all YouTube requests if configured
+      videoFetch: proxiedFetch,
+      transcriptFetch: proxiedFetch,
+      playerFetch: proxiedFetch,
     });
 
     if (!transcriptItems || transcriptItems.length === 0) {
       throw new Error('No transcript segments returned');
     }
+
+    console.log(`[Transcript] Successfully fetched ${transcriptItems.length} segments for ${videoId}`);
 
     // Map the youtube-transcript-plus format to our TranscriptSegment format
     return transcriptItems.map((item) => ({
@@ -73,6 +89,7 @@ async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSe
     }));
   } catch (error) {
     if (error instanceof Error) {
+      console.error(`[Transcript] Error fetching transcript for ${videoId}:`, error.message);
       // Check for common YouTube transcript errors
       if (error.message.includes('disabled') || error.message.includes('Transcript is disabled') || error.message.includes('No transcript')) {
         throw new Error(
