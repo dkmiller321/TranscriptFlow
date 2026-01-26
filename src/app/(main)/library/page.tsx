@@ -77,7 +77,7 @@ export default function LibraryPage() {
         );
       }
     } catch {
-      // Silent failure
+      setError('Failed to update favorite status. Please try again.');
     }
   };
 
@@ -97,7 +97,7 @@ export default function LibraryPage() {
         setTranscripts((prev) => prev.filter((t) => t.id !== id));
       }
     } catch {
-      // Silent failure
+      setError('Failed to delete transcript. Please try again.');
     }
   };
 
