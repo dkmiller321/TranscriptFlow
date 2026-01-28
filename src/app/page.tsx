@@ -1,7 +1,8 @@
 'use client';
 
+import { useRef } from 'react';
 import { Header } from '@/components/layout/Header';
-import { Logo } from '@/components/ui/Logo';
+import { Button } from '@/components/ui/Button';
 import { UrlInput } from '@/components/features/UrlInput';
 import { VideoPreview } from '@/components/features/VideoPreview';
 import { TranscriptViewer } from '@/components/features/TranscriptViewer';
@@ -13,7 +14,33 @@ import { useChannelExtraction } from '@/hooks/useChannelExtraction';
 import { Spinner } from '@/components/ui/Spinner';
 import type { ChannelOutputFormat } from '@/lib/youtube/types';
 
+const EXAMPLE_TRANSCRIPT = `{
+  "videoId": "dQw4w9WgXcQ",
+  "title": "How to Build AI Agents",
+  "segments": [
+    {
+      "text": "Welcome to this tutorial on building AI agents.",
+      "offset": 0,
+      "duration": 3.2
+    },
+    {
+      "text": "Today we'll cover the core concepts you need.",
+      "offset": 3.2,
+      "duration": 2.8
+    },
+    {
+      "text": "Let's start with understanding agent architecture.",
+      "offset": 6.0,
+      "duration": 3.1
+    }
+  ],
+  "wordCount": 847,
+  "duration": "12:34"
+}`;
+
 export default function Home() {
+  const resultsRef = useRef<HTMLDivElement>(null);
+
   const {
     isLoading: isVideoLoading,
     error: videoError,
@@ -41,10 +68,17 @@ export default function Home() {
   const isLoading = isVideoLoading || isChannelLoading;
   const error = videoError || channelError;
 
+  const scrollToResults = () => {
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
   const handleVideoExtract = async (url: string) => {
     resetChannel();
     try {
       await extractVideo(url);
+      scrollToResults();
     } catch {
       // Error is handled in the hook
     }
@@ -57,6 +91,7 @@ export default function Home() {
   ) => {
     resetVideo();
     await extractChannel(url, limit, format);
+    scrollToResults();
   };
 
   const handleReset = () => {
@@ -64,93 +99,319 @@ export default function Home() {
     resetChannel();
   };
 
+  const handleCopyExample = () => {
+    navigator.clipboard.writeText(EXAMPLE_TRANSCRIPT);
+  };
+
+  const handleDownloadExample = () => {
+    const blob = new Blob([EXAMPLE_TRANSCRIPT], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'transcript-example.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const isChannelMode = isChannelLoading || (channelInfo && results.length > 0);
   const showChannelProgress = isChannelLoading && progress.status !== 'idle';
   const showChannelResults =
     !isChannelLoading && channelInfo && results.length > 0 && progress.status === 'completed';
+  const hasResults = videoInfo || showChannelProgress || showChannelResults;
 
   return (
     <>
       <Header />
-      <main className="min-h-[calc(100vh-64px)] flex flex-col items-center px-4 py-12 md:px-8 lg:px-12 max-w-6xl mx-auto relative">
-        {/* Background gradient effect */}
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl animate-pulse delay-1000" />
-        </div>
+      <main className="min-h-[calc(100vh-64px)]">
+        {/* ==================== HERO ==================== */}
+        <section className="px-4 py-16 md:py-24 md:px-8 lg:px-12">
+          <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight text-foreground mb-6">
+              Get the transcript from any YouTube video
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
+              Paste a link, get clean text with timestamps. Works with single videos or entire channels. Export as TXT, JSON, or SRT.
+            </p>
 
-        {/* Hero section */}
-        <div className="text-center max-w-2xl mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="flex justify-center mb-6">
-            <Logo size="xl" />
+            <div className="max-w-2xl mx-auto mb-4">
+              <UrlInput
+                onSubmit={handleVideoExtract}
+                onChannelSubmit={handleChannelExtract}
+                isLoading={isLoading}
+                ctaText="Get transcript"
+                placeholder="Paste a YouTube URL here..."
+              />
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Free for single videos. No account needed.
+            </p>
+
+            {error && (
+              <div className="mt-6 p-4 bg-destructive/10 border border-destructive/30 rounded-xl max-w-2xl mx-auto">
+                <p className="text-destructive text-sm font-medium">{error}</p>
+              </div>
+            )}
+
+            {isVideoLoading && (
+              <div className="flex flex-col items-center gap-4 py-12">
+                <Spinner size="lg" />
+                <p className="text-muted-foreground text-sm">Pulling transcript...</p>
+              </div>
+            )}
           </div>
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-            Extract YouTube transcripts instantly. Supports videos and entire channels.
-          </p>
-        </div>
+        </section>
 
-        {/* Input section */}
-        <div className="w-full max-w-2xl mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
-          <UrlInput
-            onSubmit={handleVideoExtract}
-            onChannelSubmit={handleChannelExtract}
-            isLoading={isLoading}
-          />
-        </div>
+        {/* Results */}
+        {hasResults && (
+          <section ref={resultsRef} className="px-4 py-8 md:px-8 lg:px-12 border-t border-border">
+            <div className="max-w-4xl mx-auto">
+              {showChannelProgress && (
+                <ChannelProgress
+                  progress={progress}
+                  channelInfo={channelInfo}
+                  onCancel={cancelChannel}
+                />
+              )}
 
-        {/* Error message */}
-        {error && (
-          <div className="w-full max-w-2xl mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <p className="text-destructive text-sm text-center font-medium">{error}</p>
-          </div>
+              {showChannelResults && (
+                <ChannelResults
+                  channelInfo={channelInfo!}
+                  results={results}
+                  outputFormat={outputFormat}
+                  onReset={handleReset}
+                />
+              )}
+
+              {videoInfo && !isVideoLoading && !isChannelMode && (
+                <div className="flex flex-col gap-6">
+                  <VideoPreview videoInfo={videoInfo} wordCount={wordCount} />
+                  <ExportOptions
+                    segments={segments}
+                    plainText={plainText}
+                    srtContent={srtContent}
+                    videoTitle={videoInfo.title}
+                  />
+                  <TranscriptViewer segments={segments} plainText={plainText} />
+                </div>
+              )}
+            </div>
+          </section>
         )}
 
-        {/* Loading state */}
-        {isVideoLoading && (
-          <div className="flex flex-col items-center gap-4 py-12 animate-in fade-in duration-300">
-            <Spinner size="lg" />
-            <p className="text-muted-foreground text-sm">Extracting transcript...</p>
+        {/* ==================== EXAMPLE OUTPUT ==================== */}
+        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12 bg-secondary/30">
+          <div className="max-w-3xl mx-auto">
+            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-lg">
+              <div className="flex items-center gap-2 px-4 py-3 bg-secondary/50 border-b border-border">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/60" />
+                </div>
+                <span className="text-xs text-muted-foreground font-mono ml-2">transcript.json</span>
+              </div>
+
+              <pre className="p-4 overflow-x-auto text-sm font-mono text-foreground/90 leading-relaxed">
+                <code>{EXAMPLE_TRANSCRIPT}</code>
+              </pre>
+
+              <div className="flex gap-3 px-4 py-3 bg-secondary/30 border-t border-border">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyExample}
+                  className="text-xs"
+                >
+                  Copy to clipboard
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadExample}
+                  className="text-xs"
+                >
+                  Download JSON
+                </Button>
+              </div>
+            </div>
+
+            <p className="text-center text-muted-foreground mt-6">
+              What you get: structured data you can actually work with.
+            </p>
           </div>
-        )}
+        </section>
 
-        {/* Channel progress */}
-        {showChannelProgress && (
-          <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <ChannelProgress
-              progress={progress}
-              channelInfo={channelInfo}
-              onCancel={cancelChannel}
-            />
+        {/* ==================== WHO IT'S FOR ==================== */}
+        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground text-center mb-10">
+              Built for people who work with video content
+            </h2>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="rounded-xl border border-border bg-card p-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Building with AI</h3>
+                <p className="text-muted-foreground text-sm">
+                  Need to feed YouTube content into GPT or Claude? Get structured transcripts you can paste directly into any prompt.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Repurposing content</h3>
+                <p className="text-muted-foreground text-sm">
+                  Turn videos into blog posts, tweet threads, or newsletters. The transcript is the hard part—we handle that.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Research</h3>
+                <p className="text-muted-foreground text-sm">
+                  Pull transcripts from lectures, interviews, or conference talks. Search and cite without rewatching hours of video.
+                </p>
+              </div>
+            </div>
           </div>
-        )}
+        </section>
 
-        {/* Channel results */}
-        {showChannelResults && (
-          <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <ChannelResults
-              channelInfo={channelInfo!}
-              results={results}
-              outputFormat={outputFormat}
-              onReset={handleReset}
-            />
+        {/* ==================== WHY THIS TOOL ==================== */}
+        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12 bg-secondary/30">
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground text-center mb-10">
+              Why not just use a free transcript grabber?
+            </h2>
+
+            <div className="space-y-6 text-foreground">
+              <p>
+                Most free tools give you a wall of text with no timestamps, weird formatting, and no way to export properly.
+                Fine if you just need to skim something. Not fine if you&apos;re actually trying to use the content.
+              </p>
+
+              <p>
+                TranscriptFlow gives you <strong>structured data</strong>—timestamps, proper formatting, and exports
+                that work (TXT, JSON, SRT). You can also pull transcripts from <strong>entire channels</strong> at once,
+                not just one video at a time.
+              </p>
+
+              <p className="text-muted-foreground text-sm">
+                The free tier handles single videos. If you need channel extraction or want to save your transcript history,
+                there&apos;s a paid plan for that.
+              </p>
+            </div>
           </div>
-        )}
+        </section>
 
-        {/* Video results */}
-        {videoInfo && !isVideoLoading && !isChannelMode && (
-          <div className="w-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <VideoPreview videoInfo={videoInfo} wordCount={wordCount} />
+        {/* ==================== PRICING ==================== */}
+        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground text-center mb-4">
+              Pricing
+            </h2>
+            <p className="text-muted-foreground text-center mb-10">
+              Start free. Upgrade if you need more.
+            </p>
 
-            <ExportOptions
-              segments={segments}
-              plainText={plainText}
-              srtContent={srtContent}
-              videoTitle={videoInfo.title}
-            />
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="rounded-xl border border-border bg-card p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-1">Free</h3>
+                <p className="text-sm text-muted-foreground mb-6">For occasional use</p>
 
-            <TranscriptViewer segments={segments} plainText={plainText} />
+                <ul className="space-y-3 text-sm">
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">Single video transcripts</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">Copy to clipboard</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">Plain text export</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="rounded-xl border-2 border-primary bg-card p-6 relative">
+                <div className="absolute -top-3 left-6">
+                  <span className="bg-primary text-primary-foreground text-xs font-medium px-2 py-1 rounded">Pro</span>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-1">Pro</h3>
+                <p className="text-sm text-muted-foreground mb-6">For regular use</p>
+
+                <ul className="space-y-3 text-sm">
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">Entire channel extraction</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">Batch processing</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">JSON + SRT exports</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">ZIP downloads</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">Saved transcript history</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
-        )}
+        </section>
+
+        {/* ==================== FINAL CTA ==================== */}
+        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12 bg-secondary/30">
+          <div className="max-w-xl mx-auto text-center">
+            <p className="text-xl md:text-2xl text-foreground mb-8">
+              Try it out—paste a YouTube link above.
+            </p>
+            <Button
+              size="lg"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="px-8"
+            >
+              Back to top
+            </Button>
+          </div>
+        </section>
       </main>
     </>
   );

@@ -11,9 +11,11 @@ interface UrlInputProps {
   onSubmit: (url: string) => void;
   onChannelSubmit?: (url: string, limit: number, format: ChannelOutputFormat) => void;
   isLoading?: boolean;
+  ctaText?: string;
+  placeholder?: string;
 }
 
-export function UrlInput({ onSubmit, onChannelSubmit, isLoading }: UrlInputProps) {
+export function UrlInput({ onSubmit, onChannelSubmit, isLoading, ctaText, placeholder }: UrlInputProps) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [isChannel, setIsChannel] = useState(false);
@@ -65,7 +67,12 @@ export function UrlInput({ onSubmit, onChannelSubmit, isLoading }: UrlInputProps
             setUrl(e.target.value);
             setError('');
           }}
-          placeholder="Paste a YouTube video or channel URL"
+          onInput={(e) => {
+            const target = e.target as HTMLInputElement;
+            setUrl(target.value);
+            setError('');
+          }}
+          placeholder={placeholder || "Paste a YouTube video or channel URL"}
           className="flex-1 h-12 px-4 bg-transparent text-foreground placeholder:text-muted-foreground text-base focus:outline-none"
           disabled={isLoading}
         />
@@ -84,9 +91,9 @@ export function UrlInput({ onSubmit, onChannelSubmit, isLoading }: UrlInputProps
               Processing
             </span>
           ) : isChannel ? (
-            'Extract Channel'
+            'Extract channel'
           ) : (
-            'Extract'
+            ctaText || 'Extract transcript'
           )}
         </Button>
       </div>

@@ -18,6 +18,21 @@ variables:
   TEST_BASE_URL: "http://localhost:3000"
   NEXT_PUBLIC_APP_URL: "http://localhost:3000"
   NODE_ENV: "test"
+  # App secrets - these reference variables defined in GitLab CI/CD Settings
+  # Go to: Settings > CI/CD > Variables to add these
+  NEXT_PUBLIC_SUPABASE_URL: $NEXT_PUBLIC_SUPABASE_URL
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: $NEXT_PUBLIC_SUPABASE_ANON_KEY
+  SUPABASE_SERVICE_ROLE_KEY: $SUPABASE_SERVICE_ROLE_KEY
+  YOUTUBE_API_KEY: $YOUTUBE_API_KEY
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: $NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  STRIPE_SECRET_KEY: $STRIPE_SECRET_KEY
+  STRIPE_PRO_MONTHLY_PRICE_ID: $STRIPE_PRO_MONTHLY_PRICE_ID
+  STRIPE_PRO_YEARLY_PRICE_ID: $STRIPE_PRO_YEARLY_PRICE_ID
+  STRIPE_BUSINESS_MONTHLY_PRICE_ID: $STRIPE_BUSINESS_MONTHLY_PRICE_ID
+  STRIPE_BUSINESS_YEARLY_PRICE_ID: $STRIPE_BUSINESS_YEARLY_PRICE_ID
+  PROXY_TYPE: $PROXY_TYPE
+  PROXY_USERNAME: $PROXY_USERNAME
+  PROXY_PASSWORD: $PROXY_PASSWORD
 
 # Cache node_modules and Playwright browsers between jobs
 cache:
@@ -61,6 +76,17 @@ install:
   needs:
     - install
   before_script:
+    # Debug: Check if environment variables are set (without revealing values)
+    - echo "=== Environment Variable Check ==="
+    - if [ -n "$NEXT_PUBLIC_SUPABASE_URL" ]; then echo "✓ NEXT_PUBLIC_SUPABASE_URL is set"; else echo "✗ NEXT_PUBLIC_SUPABASE_URL is NOT set"; fi
+    - if [ -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ]; then echo "✓ NEXT_PUBLIC_SUPABASE_ANON_KEY is set"; else echo "✗ NEXT_PUBLIC_SUPABASE_ANON_KEY is NOT set"; fi
+    - if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then echo "✓ SUPABASE_SERVICE_ROLE_KEY is set"; else echo "✗ SUPABASE_SERVICE_ROLE_KEY is NOT set"; fi
+    - if [ -n "$YOUTUBE_API_KEY" ]; then echo "✓ YOUTUBE_API_KEY is set"; else echo "✗ YOUTUBE_API_KEY is NOT set"; fi
+    - if [ -n "$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" ]; then echo "✓ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is set"; else echo "✗ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is NOT set"; fi
+    - if [ -n "$STRIPE_SECRET_KEY" ]; then echo "✓ STRIPE_SECRET_KEY is set"; else echo "✗ STRIPE_SECRET_KEY is NOT set"; fi
+    - if [ -n "$PROXY_TYPE" ]; then echo "✓ PROXY_TYPE is set (value: $PROXY_TYPE)"; else echo "✗ PROXY_TYPE is NOT set"; fi
+    - echo "==================================="
+
     # Start Next.js dev server in background
     - echo "Starting Next.js application..."
     - npm run dev &
