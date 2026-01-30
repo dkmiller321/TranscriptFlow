@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
+import { Suspense, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { UrlInput } from '@/components/features/UrlInput';
@@ -12,6 +13,9 @@ import { ChannelResults } from '@/components/features/ChannelResults';
 import { useExtraction } from '@/hooks/useExtraction';
 import { useChannelExtraction } from '@/hooks/useChannelExtraction';
 import { Spinner } from '@/components/ui/Spinner';
+import AnimatedBackground from '@/components/ui/AnimatedBackground';
+import GlassCard from '@/components/ui/GlassCard';
+import GradientButton from '@/components/ui/GradientButton';
 import type { ChannelOutputFormat } from '@/lib/youtube/types';
 
 const EXAMPLE_TRANSCRIPT = `{
@@ -38,8 +42,9 @@ const EXAMPLE_TRANSCRIPT = `{
   "duration": "12:34"
 }`;
 
-export default function Home() {
+function HomeContent() {
   const resultsRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
 
   const {
     isLoading: isVideoLoading,
@@ -67,6 +72,15 @@ export default function Home() {
 
   const isLoading = isVideoLoading || isChannelLoading;
   const error = videoError || channelError;
+
+  // Handle re-extract from history page (via ?v= query param)
+  useEffect(() => {
+    const videoId = searchParams.get('v');
+    if (videoId && !isLoading && !videoInfo) {
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+      extractVideo(videoUrl);
+    }
+  }, [searchParams, isLoading, videoInfo, extractVideo]);
 
   const scrollToResults = () => {
     setTimeout(() => {
@@ -122,18 +136,21 @@ export default function Home() {
   return (
     <>
       <Header />
-      <main className="min-h-[calc(100vh-64px)]">
+      <AnimatedBackground />
+      <main className="min-h-[calc(100vh-64px)] relative">
         {/* ==================== HERO ==================== */}
         <section className="px-4 py-16 md:py-24 md:px-8 lg:px-12">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight text-foreground mb-6">
-              Get the transcript from any YouTube video
+          <div className="max-w-3xl mx-auto text-center animate-fade-in-up">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight mb-6">
+              <span className="gradient-text">Get the transcript</span>
+              <br />
+              <span className="text-foreground">from any YouTube video</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
               Paste a link, get clean text with timestamps. Works with single videos or entire channels. Export as TXT, JSON, or SRT.
             </p>
 
-            <div className="max-w-2xl mx-auto mb-4">
+            <GlassCard className="max-w-2xl mx-auto mb-4 p-6" glow>
               <UrlInput
                 onSubmit={handleVideoExtract}
                 onChannelSubmit={handleChannelExtract}
@@ -141,16 +158,16 @@ export default function Home() {
                 ctaText="Get transcript"
                 placeholder="Paste a YouTube URL here..."
               />
-            </div>
+            </GlassCard>
 
             <p className="text-sm text-muted-foreground">
               Free for single videos. No account needed.
             </p>
 
             {error && (
-              <div className="mt-6 p-4 bg-destructive/10 border border-destructive/30 rounded-xl max-w-2xl mx-auto">
+              <GlassCard className="mt-6 p-4 max-w-2xl mx-auto border-destructive/30">
                 <p className="text-destructive text-sm font-medium">{error}</p>
-              </div>
+              </GlassCard>
             )}
 
             {isVideoLoading && (
@@ -200,14 +217,14 @@ export default function Home() {
         )}
 
         {/* ==================== EXAMPLE OUTPUT ==================== */}
-        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12 bg-secondary/30">
+        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
           <div className="max-w-3xl mx-auto">
-            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-lg">
-              <div className="flex items-center gap-2 px-4 py-3 bg-secondary/50 border-b border-border">
+            <GlassCard variant="strong" className="overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 bg-secondary/50 border-b border-white/5">
                 <div className="flex gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-red-500/60" />
                   <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-                  <div className="w-3 h-3 rounded-full bg-green-500/60" />
+                  <div className="w-3 h-3 rounded-full bg-forest-500/60" />
                 </div>
                 <span className="text-xs text-muted-foreground font-mono ml-2">transcript.json</span>
               </div>
@@ -216,28 +233,26 @@ export default function Home() {
                 <code>{EXAMPLE_TRANSCRIPT}</code>
               </pre>
 
-              <div className="flex gap-3 px-4 py-3 bg-secondary/30 border-t border-border">
-                <Button
+              <div className="flex gap-3 px-4 py-3 bg-secondary/30 border-t border-white/5">
+                <GradientButton
                   variant="outline"
                   size="sm"
                   onClick={handleCopyExample}
-                  className="text-xs"
                 >
                   Copy to clipboard
-                </Button>
-                <Button
+                </GradientButton>
+                <GradientButton
                   variant="outline"
                   size="sm"
                   onClick={handleDownloadExample}
-                  className="text-xs"
                 >
                   Download JSON
-                </Button>
+                </GradientButton>
               </div>
-            </div>
+            </GlassCard>
 
             <p className="text-center text-muted-foreground mt-6">
-              What you get: structured data you can actually work with.
+              What you get: <span className="gradient-text font-semibold">structured data</span> you can actually work with.
             </p>
           </div>
         </section>
@@ -245,14 +260,15 @@ export default function Home() {
         {/* ==================== WHO IT'S FOR ==================== */}
         <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground text-center mb-10">
-              Built for people who work with video content
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-10">
+              <span className="gradient-text">Built for people</span>
+              <span className="text-foreground"> who work with video content</span>
             </h2>
 
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="rounded-xl border border-border bg-card p-6">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="grid md:grid-cols-3 gap-6 stagger-children">
+              <GlassCard hover glow className="p-6">
+                <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center mb-4">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
@@ -260,11 +276,11 @@ export default function Home() {
                 <p className="text-muted-foreground text-sm">
                   Need to feed YouTube content into GPT or Claude? Get structured transcripts you can paste directly into any prompt.
                 </p>
-              </div>
+              </GlassCard>
 
-              <div className="rounded-xl border border-border bg-card p-6">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <GlassCard hover glow className="p-6">
+                <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center mb-4">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
                 </div>
@@ -272,11 +288,11 @@ export default function Home() {
                 <p className="text-muted-foreground text-sm">
                   Turn videos into blog posts, tweet threads, or newsletters. The transcript is the hard part—we handle that.
                 </p>
-              </div>
+              </GlassCard>
 
-              <div className="rounded-xl border border-border bg-card p-6">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <GlassCard hover glow className="p-6">
+                <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center mb-4">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
@@ -284,27 +300,28 @@ export default function Home() {
                 <p className="text-muted-foreground text-sm">
                   Pull transcripts from lectures, interviews, or conference talks. Search and cite without rewatching hours of video.
                 </p>
-              </div>
+              </GlassCard>
             </div>
           </div>
         </section>
 
         {/* ==================== WHY THIS TOOL ==================== */}
-        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12 bg-secondary/30">
+        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
           <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground text-center mb-10">
-              Why not just use a free transcript grabber?
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-10">
+              <span className="text-foreground">Why not just use a</span>{' '}
+              <span className="gradient-text">free transcript grabber?</span>
             </h2>
 
-            <div className="space-y-6 text-foreground">
-              <p>
+            <GlassCard className="p-8 space-y-6">
+              <p className="text-foreground">
                 Most free tools give you a wall of text with no timestamps, weird formatting, and no way to export properly.
                 Fine if you just need to skim something. Not fine if you&apos;re actually trying to use the content.
               </p>
 
-              <p>
-                TranscriptFlow gives you <strong>structured data</strong>—timestamps, proper formatting, and exports
-                that work (TXT, JSON, SRT). You can also pull transcripts from <strong>entire channels</strong> at once,
+              <p className="text-foreground">
+                TranscriptFlow gives you <strong className="gradient-text">structured data</strong>—timestamps, proper formatting, and exports
+                that work (TXT, JSON, SRT). You can also pull transcripts from <strong className="gradient-text">entire channels</strong> at once,
                 not just one video at a time.
               </p>
 
@@ -312,107 +329,118 @@ export default function Home() {
                 The free tier handles single videos. If you need channel extraction or want to save your transcript history,
                 there&apos;s a paid plan for that.
               </p>
-            </div>
+            </GlassCard>
           </div>
         </section>
 
         {/* ==================== PRICING ==================== */}
         <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground text-center mb-4">
-              Pricing
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-4">
+              <span className="gradient-text">Pricing</span>
             </h2>
             <p className="text-muted-foreground text-center mb-10">
               Start free. Upgrade if you need more.
             </p>
 
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="rounded-xl border border-border bg-card p-6">
+              <GlassCard hover className="p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-1">Free</h3>
                 <p className="text-sm text-muted-foreground mb-6">For occasional use</p>
 
                 <ul className="space-y-3 text-sm">
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-foreground">Single video transcripts</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-foreground">Copy to clipboard</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-foreground">Plain text export</span>
                   </li>
                 </ul>
-              </div>
+              </GlassCard>
 
-              <div className="rounded-xl border-2 border-primary bg-card p-6 relative">
+              <GlassCard variant="strong" glow className="p-6 relative gradient-border">
                 <div className="absolute -top-3 left-6">
-                  <span className="bg-primary text-primary-foreground text-xs font-medium px-2 py-1 rounded">Pro</span>
+                  <span className="gradient-primary text-white text-xs font-medium px-3 py-1 rounded-full">Pro</span>
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-1">Pro</h3>
                 <p className="text-sm text-muted-foreground mb-6">For regular use</p>
 
                 <ul className="space-y-3 text-sm">
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-foreground">Entire channel extraction</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-foreground">Batch processing</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-foreground">JSON + SRT exports</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-foreground">ZIP downloads</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span className="text-foreground">Saved transcript history</span>
                   </li>
                 </ul>
-              </div>
+              </GlassCard>
             </div>
           </div>
         </section>
 
         {/* ==================== FINAL CTA ==================== */}
-        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12 bg-secondary/30">
-          <div className="max-w-xl mx-auto text-center">
+        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
+          <GlassCard className="max-w-xl mx-auto text-center p-10" glow>
             <p className="text-xl md:text-2xl text-foreground mb-8">
               Try it out—paste a YouTube link above.
             </p>
-            <Button
+            <GradientButton
               size="lg"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="px-8"
             >
               Back to top
-            </Button>
-          </div>
+            </GradientButton>
+          </GlassCard>
         </section>
       </main>
     </>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest-500" />
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }

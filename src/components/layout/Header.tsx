@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { Logo } from '@/components/ui/Logo';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import { ROUTES } from '@/lib/utils/constants';
 import styles from './Layout.module.css';
 
@@ -59,6 +60,7 @@ export function Header() {
                   </Link>
                 </>
               )}
+              <ThemeToggle />
             </>
           )}
         </nav>

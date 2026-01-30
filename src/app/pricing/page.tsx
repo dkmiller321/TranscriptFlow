@@ -4,10 +4,12 @@ import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TIERS, type TierName } from '@/lib/usage/tiers';
 import { cn } from '@/lib/utils';
+import AnimatedBackground from '@/components/ui/AnimatedBackground';
+import GlassCard from '@/components/ui/GlassCard';
+import GradientButton from '@/components/ui/GradientButton';
 
 function PricingContent() {
   const router = useRouter();
@@ -56,17 +58,14 @@ function PricingContent() {
   return (
     <>
       <Header />
-      <main className="min-h-[calc(100vh-64px)] px-4 py-12 md:px-8 lg:px-12 max-w-6xl mx-auto">
-        {/* Background gradient */}
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/5 rounded-full blur-3xl" />
-        </div>
-
+      <AnimatedBackground />
+      <main className="min-h-[calc(100vh-64px)] px-4 py-12 md:px-8 lg:px-12 max-w-6xl mx-auto relative">
         {/* Header */}
-        <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <h1 className="font-display text-4xl md:text-5xl font-bold bg-gradient-to-r from-foreground via-foreground/90 to-foreground/70 bg-clip-text text-transparent mb-4">
-            Simple, Transparent Pricing
+        <div className="text-center mb-12 animate-fade-in-up">
+          <h1 className="font-display text-4xl md:text-5xl font-bold mb-4">
+            <span className="gradient-text">Simple, Transparent</span>
+            <br />
+            <span className="text-foreground">Pricing</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Choose the plan that fits your needs. Upgrade or downgrade anytime.
@@ -75,22 +74,22 @@ function PricingContent() {
 
         {/* Cancelled notice */}
         {cancelled && (
-          <div className="max-w-md mx-auto mb-8 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-center animate-in fade-in duration-300">
+          <GlassCard className="max-w-md mx-auto mb-8 p-4 text-center border-yellow-500/30 animate-scale-in">
             <p className="text-yellow-500 text-sm">
               Checkout was cancelled. No charges were made.
             </p>
-          </div>
+          </GlassCard>
         )}
 
         {/* Billing toggle */}
-        <div className="flex justify-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
-          <div className="inline-flex items-center gap-2 p-1 bg-secondary/50 rounded-lg">
+        <div className="flex justify-center mb-12 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
+          <GlassCard className="inline-flex items-center gap-2 p-1.5">
             <button
               onClick={() => setBillingInterval('monthly')}
               className={cn(
-                "px-4 py-2 text-sm font-medium rounded-md transition-all",
+                "px-4 py-2 text-sm font-medium rounded-lg transition-all",
                 billingInterval === 'monthly'
-                  ? "bg-primary text-primary-foreground shadow-md"
+                  ? "gradient-primary text-white shadow-md"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -99,51 +98,57 @@ function PricingContent() {
             <button
               onClick={() => setBillingInterval('yearly')}
               className={cn(
-                "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2",
+                "px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2",
                 billingInterval === 'yearly'
-                  ? "bg-primary text-primary-foreground shadow-md"
+                  ? "gradient-primary text-white shadow-md"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               Yearly
-              <Badge variant="secondary" className="bg-green-500/20 text-green-500 border-green-500/30">
+              <Badge variant="secondary" className="bg-forest-500/20 text-forest-400 border-forest-500/30">
                 Save 27%
               </Badge>
             </button>
-          </div>
+          </GlassCard>
         </div>
 
         {/* Pricing cards */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto stagger-children">
           {tiers.map(([tierKey, tier], index) => {
             const price = billingInterval === 'monthly' ? tier.pricing.monthly : tier.pricing.yearly;
             const isPopular = tierKey === 'pro';
 
             return (
-              <Card
+              <GlassCard
                 key={tierKey}
+                variant={isPopular ? "strong" : "default"}
+                hover
+                glow={isPopular}
                 className={cn(
-                  "relative bg-card/50 backdrop-blur-sm border-border/50 shadow-lg transition-all duration-300 hover:shadow-xl",
-                  isPopular && "border-primary/50 shadow-primary/10 scale-[1.02]"
+                  "relative p-6 transition-all duration-300",
+                  isPopular && "scale-[1.02] gradient-border"
                 )}
               >
                 {isPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground shadow-lg">
+                    <span className="gradient-primary text-white text-xs font-medium px-3 py-1 rounded-full shadow-lg shadow-forest-500/25">
                       Most Popular
-                    </Badge>
+                    </span>
                   </div>
                 )}
 
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-2xl">{tier.name}</CardTitle>
-                  <CardDescription>{tier.description}</CardDescription>
-                </CardHeader>
+                <div className="text-center pb-4">
+                  <h3 className="text-2xl font-bold text-foreground">{tier.name}</h3>
+                  <p className="text-sm text-muted-foreground mt-1">{tier.description}</p>
+                </div>
 
-                <CardContent className="space-y-6">
+                <div className="space-y-6">
                   {/* Price */}
                   <div className="text-center">
-                    <span className="text-4xl font-bold text-foreground">
+                    <span className={cn(
+                      "text-4xl font-bold",
+                      isPopular ? "gradient-text" : "text-foreground"
+                    )}>
                       ${price}
                     </span>
                     {tierKey !== 'free' && (
@@ -163,7 +168,7 @@ function PricingContent() {
                     {tier.features.map((feature, i) => (
                       <li key={i} className="flex items-start gap-3">
                         <svg
-                          className="w-5 h-5 text-green-500 shrink-0 mt-0.5"
+                          className="w-5 h-5 text-forest-400 shrink-0 mt-0.5"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -183,42 +188,36 @@ function PricingContent() {
                   </ul>
 
                   {/* CTA Button */}
-                  <Button
+                  <GradientButton
                     onClick={() => handleUpgrade(tierKey)}
                     disabled={loading !== null}
-                    variant={isPopular ? 'default' : 'outline'}
-                    className={cn(
-                      "w-full",
-                      isPopular && "shadow-lg shadow-primary/25"
-                    )}
+                    variant={isPopular ? 'primary' : 'outline'}
+                    className="w-full"
+                    loading={loading === tierKey}
                   >
                     {loading === tierKey ? (
-                      <span className="flex items-center gap-2">
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Processing...
-                      </span>
+                      'Processing...'
                     ) : tierKey === 'free' ? (
                       'Get Started'
                     ) : (
                       `Upgrade to ${tier.name}`
                     )}
-                  </Button>
-                </CardContent>
-              </Card>
+                  </GradientButton>
+                </div>
+              </GlassCard>
             );
           })}
         </div>
 
         {/* FAQ or additional info */}
-        <div className="mt-16 text-center animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500">
-          <p className="text-muted-foreground text-sm">
-            All plans include SSL encryption and 99.9% uptime guarantee.
-            <br />
-            Questions? <a href="mailto:support@transcriptflow.com" className="text-primary hover:underline">Contact us</a>
-          </p>
+        <div className="mt-16 text-center animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
+          <GlassCard variant="subtle" className="inline-block px-8 py-4">
+            <p className="text-muted-foreground text-sm">
+              All plans include SSL encryption and 99.9% uptime guarantee.
+              <br />
+              Questions? <a href="mailto:support@transcriptflow.com" className="text-forest-400 hover:text-forest-500 hover:underline transition-colors">Contact us</a>
+            </p>
+          </GlassCard>
         </div>
       </main>
     </>

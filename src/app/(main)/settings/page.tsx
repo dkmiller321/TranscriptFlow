@@ -51,10 +51,7 @@ function SettingsContent() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
   const [exportFormat, setExportFormat] = useState('txt');
-  const [savingApiKey, setSavingApiKey] = useState(false);
   const [savingFormat, setSavingFormat] = useState(false);
   const [managingSubscription, setManagingSubscription] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -146,56 +143,6 @@ function SettingsContent() {
     setTimeout(() => setMessage(null), 3000);
   };
 
-  const handleSaveApiKey = async () => {
-    if (!apiKey.trim()) {
-      showMessage('error', 'Please enter an API key');
-      return;
-    }
-
-    setSavingApiKey(true);
-    try {
-      const response = await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ youtube_api_key: apiKey }),
-      });
-
-      if (response.ok) {
-        setApiKey('');
-        setSettings((prev) => prev ? { ...prev, has_youtube_api_key: true } : null);
-        showMessage('success', 'API key saved successfully');
-      } else {
-        showMessage('error', 'Failed to save API key');
-      }
-    } catch (error) {
-      console.error('Failed to save API key:', error);
-      showMessage('error', 'Failed to save API key');
-    } finally {
-      setSavingApiKey(false);
-    }
-  };
-
-  const handleRemoveApiKey = async () => {
-    setSavingApiKey(true);
-    try {
-      const response = await fetch('/api/settings', {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setSettings((prev) => prev ? { ...prev, has_youtube_api_key: false } : null);
-        showMessage('success', 'API key removed');
-      } else {
-        showMessage('error', 'Failed to remove API key');
-      }
-    } catch (error) {
-      console.error('Failed to remove API key:', error);
-      showMessage('error', 'Failed to remove API key');
-    } finally {
-      setSavingApiKey(false);
-    }
-  };
-
   const handleSaveExportFormat = async (format: string) => {
     setSavingFormat(true);
     setExportFormat(format);
@@ -254,9 +201,8 @@ function SettingsContent() {
       )}
 
       <Tabs defaultValue="account" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="api">API Key</TabsTrigger>
           <TabsTrigger value="usage">Usage</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
         </TabsList>
@@ -317,108 +263,6 @@ function SettingsContent() {
                 <Button variant="danger" onClick={handleSignOut}>
                   Sign Out
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* API Key Tab */}
-        <TabsContent value="api" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>YouTube Data API Key</CardTitle>
-              <CardDescription>
-                Add your own YouTube Data API key for higher rate limits and more
-                control over your usage.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {settings?.has_youtube_api_key ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                    <div className="w-2 h-2 bg-green-500 rounded-full" />
-                    <span className="text-sm text-green-600 dark:text-green-400">
-                      Your API key is configured and active
-                    </span>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    onClick={handleRemoveApiKey}
-                    disabled={savingApiKey}
-                  >
-                    {savingApiKey ? 'Removing...' : 'Remove API Key'}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="api-key">API Key</Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          id="api-key"
-                          type={showApiKey ? 'text' : 'password'}
-                          placeholder="Enter your YouTube Data API v3 key"
-                          value={apiKey}
-                          onChange={(e) => setApiKey(e.target.value)}
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pr-10"
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                          onClick={() => setShowApiKey(!showApiKey)}
-                        >
-                          {showApiKey ? (
-                            <EyeOffIcon className="w-4 h-4" />
-                          ) : (
-                            <EyeIcon className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                      <Button variant="primary" onClick={handleSaveApiKey} disabled={savingApiKey}>
-                        {savingApiKey ? 'Saving...' : 'Save'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-4 border-t space-y-3">
-                <h4 className="font-medium">Why add your own API key?</h4>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary mt-0.5">-</span>
-                    <span>Higher daily extraction limits</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary mt-0.5">-</span>
-                    <span>No shared quota with other users</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary mt-0.5">-</span>
-                    <span>Full control over your API usage and costs</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="pt-4 border-t">
-                <h4 className="font-medium mb-2">How to get an API key</h4>
-                <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                  <li>Go to the Google Cloud Console</li>
-                  <li>Create a new project or select an existing one</li>
-                  <li>Enable the YouTube Data API v3</li>
-                  <li>Create credentials (API key)</li>
-                  <li>Copy and paste the key above</li>
-                </ol>
-                <a
-                  href="https://console.cloud.google.com/apis/library/youtube.googleapis.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-3"
-                >
-                  Open Google Cloud Console
-                  <ExternalLinkIcon className="w-3 h-3" />
-                </a>
               </div>
             </CardContent>
           </Card>
@@ -703,63 +547,6 @@ export default function SettingsPage() {
 }
 
 // Icon components
-function EyeIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-      <line x1="2" x2="22" y1="2" y2="22" />
-    </svg>
-  );
-}
-
-function ExternalLinkIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-      <polyline points="15 3 21 3 21 9" />
-      <line x1="10" x2="21" y1="14" y2="3" />
-    </svg>
-  );
-}
-
 function SunIcon({ className }: { className?: string }) {
   return (
     <svg

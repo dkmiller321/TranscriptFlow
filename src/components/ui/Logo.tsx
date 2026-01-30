@@ -23,7 +23,7 @@ export function Logo({ size = 'md', showText = true, className }: LogoProps) {
       <LogoMark size={icon} />
       {showText && (
         <span className={cn('font-display font-semibold tracking-tight', text)}>
-          <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-sage-400 via-forest-400 to-sage-400 bg-clip-text text-transparent">
             Transcript
           </span>
           <span className="text-foreground">Flow</span>
@@ -50,11 +50,11 @@ export function LogoMark({ size = 32, className }: LogoMarkProps) {
       aria-label="TranscriptFlow logo"
     >
       <defs>
-        {/* Main gradient for the play button shape */}
+        {/* Main gradient - Eucalyptus Grove palette */}
         <linearGradient id="logo-gradient-main" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="50%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#22d3ee" />
+          <stop offset="0%" stopColor="#B2AC88" />
+          <stop offset="50%" stopColor="#4B6E48" />
+          <stop offset="100%" stopColor="#B2AC88" />
         </linearGradient>
 
         {/* Glow effect */}
@@ -173,8 +173,8 @@ export function LogoFavicon({ size = 32 }: { size?: number }) {
     >
       <defs>
         <linearGradient id="favicon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="100%" stopColor="#3b82f6" />
+          <stop offset="0%" stopColor="#B2AC88" />
+          <stop offset="100%" stopColor="#4B6E48" />
         </linearGradient>
       </defs>
 

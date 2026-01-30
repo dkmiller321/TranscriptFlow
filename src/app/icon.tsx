@@ -20,7 +20,7 @@ export default function Icon() {
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: 8,
-          background: 'linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%)',
+          background: 'linear-gradient(135deg, #B2AC88 0%, #4B6E48 100%)',
         }}
       >
         {/* Text lines */}

@@ -4,10 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ROUTES } from '@/lib/utils/constants';
-import styles from '../auth.module.css';
+import AnimatedBackground from '@/components/ui/AnimatedBackground';
+import GlassCard from '@/components/ui/GlassCard';
+import GradientButton from '@/components/ui/GradientButton';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -33,14 +34,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>Welcome back</h1>
-          <p className={styles.subtitle}>Sign in to your account</p>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <AnimatedBackground />
+      <GlassCard glow className="w-full max-w-md p-8 animate-scale-in">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold mb-2">
+            <span className="gradient-text">Welcome back</span>
+          </h1>
+          <p className="text-muted-foreground">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             type="email"
             label="Email"
@@ -59,20 +63,24 @@ export default function LoginPage() {
             required
           />
 
-          {error && <p className={styles.error}>{error}</p>}
+          {error && (
+            <p className="text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20">
+              {error}
+            </p>
+          )}
 
-          <Button type="submit" fullWidth isLoading={isLoading}>
+          <GradientButton type="submit" className="w-full" loading={isLoading}>
             Sign In
-          </Button>
+          </GradientButton>
         </form>
 
-        <p className={styles.footer}>
+        <p className="text-center text-sm text-muted-foreground mt-6">
           Don&apos;t have an account?{' '}
-          <Link href={ROUTES.SIGNUP} className={styles.link}>
+          <Link href={ROUTES.SIGNUP} className="text-forest-400 hover:text-forest-500 hover:underline transition-colors">
             Sign up
           </Link>
         </p>
-      </div>
+      </GlassCard>
     </div>
   );
 }
