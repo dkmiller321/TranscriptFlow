@@ -21,17 +21,6 @@ export const CHANNEL_LIMITS = {
   BATCH_SIZE: 10,
 } as const;
 
-export const RATE_LIMITS = {
-  ANONYMOUS: {
-    EXTRACTIONS_PER_HOUR: 5,
-    EXTRACTIONS_PER_DAY: 20,
-  },
-  AUTHENTICATED: {
-    EXTRACTIONS_PER_HOUR: 20,
-    EXTRACTIONS_PER_DAY: 100,
-  },
-};
-
 export const EXPORT_FORMATS = ['txt', 'srt', 'json'] as const;
 
 export const APP_NAME = 'TranscriptFlow';

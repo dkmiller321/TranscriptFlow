@@ -44,25 +44,6 @@ export function isChannelUrl(input: string): boolean {
   return Object.values(YOUTUBE_CHANNEL_PATTERNS).some((pattern) => pattern.test(trimmed));
 }
 
-export function getChannelType(input: string): ChannelUrlType | null {
-  const trimmed = input.trim();
-
-  if (YOUTUBE_CHANNEL_PATTERNS.HANDLE.test(trimmed)) {
-    return 'handle';
-  }
-  if (YOUTUBE_CHANNEL_PATTERNS.CHANNEL_ID.test(trimmed)) {
-    return 'channel_id';
-  }
-  if (YOUTUBE_CHANNEL_PATTERNS.CUSTOM_URL.test(trimmed)) {
-    return 'custom_url';
-  }
-  if (YOUTUBE_CHANNEL_PATTERNS.USER.test(trimmed)) {
-    return 'user';
-  }
-
-  return null;
-}
-
 export interface ExtractedChannelInfo {
   type: ChannelUrlType;
   value: string;
@@ -96,8 +77,4 @@ export function extractChannelId(input: string): ExtractedChannelInfo | null {
   }
 
   return null;
-}
-
-export function getChannelUrl(channelId: string): string {
-  return `https://www.youtube.com/channel/${channelId}`;
 }

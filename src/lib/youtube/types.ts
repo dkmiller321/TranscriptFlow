@@ -45,18 +45,6 @@ export interface VideoTranscriptResult extends TranscriptResult {
   error?: string;
 }
 
-export interface ChannelTranscriptResult {
-  channelInfo: ChannelInfo;
-  videos: Array<{
-    video: ChannelVideoItem;
-    transcript: VideoTranscriptResult | null;
-  }>;
-  totalVideos: number;
-  processedVideos: number;
-  successCount: number;
-  failedCount: number;
-}
-
 export interface BatchProgress {
   status: 'idle' | 'fetching_videos' | 'processing' | 'completed' | 'cancelled' | 'error';
   currentVideoIndex: number;
