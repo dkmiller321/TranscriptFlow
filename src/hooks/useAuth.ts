@@ -12,12 +12,12 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session (getSession is faster, uses cached data)
+    // Use getUser() to verify auth state - getSession() returns cached data that can be stale
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { user } } = await supabase.auth.getUser();
         if (mounted) {
-          setUser(session?.user ?? null);
+          setUser(user);
           setLoading(false);
         }
       } catch {
