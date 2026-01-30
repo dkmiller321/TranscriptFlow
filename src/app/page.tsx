@@ -41,13 +41,15 @@ function HomeContent() {
     progress,
     results,
     outputFormat,
+    isRetrying,
     extract: extractChannel,
     cancel: cancelChannel,
     reset: resetChannel,
   } = useChannelExtraction();
 
   const isLoading = isVideoLoading || isChannelLoading;
-  const error = videoError || channelError;
+  // Don't show channel errors while retrying connection
+  const error = videoError || (channelError && !isRetrying ? channelError : null);
 
   // Handle re-extract from history page (via ?v= query param)
   useEffect(() => {
@@ -136,6 +138,13 @@ function HomeContent() {
               <div className="flex flex-col items-center gap-4 py-12">
                 <Spinner size="lg" />
                 <p className="text-muted-foreground text-sm">Pulling transcript...</p>
+              </div>
+            )}
+
+            {isRetrying && isChannelLoading && (
+              <div className="flex flex-col items-center gap-4 py-12">
+                <Spinner size="lg" />
+                <p className="text-muted-foreground text-sm">Connecting to server...</p>
               </div>
             )}
           </div>

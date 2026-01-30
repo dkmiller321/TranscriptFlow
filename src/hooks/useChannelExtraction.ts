@@ -20,6 +20,7 @@ interface ChannelExtractionState {
     transcript: VideoTranscriptResult | null;
   }>;
   outputFormat: ChannelOutputFormat;
+  isRetrying: boolean;
 }
 
 const initialProgress: BatchProgress = {
@@ -38,13 +39,14 @@ const initialState: ChannelExtractionState = {
   progress: initialProgress,
   results: [],
   outputFormat: 'combined',
+  isRetrying: false,
 };
 
 export function useChannelExtraction() {
   const [state, setState] = useState<ChannelExtractionState>(initialState);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef<number>(0);
-  const maxRetries = 5;
+  const maxRetries = 10; // Increased to handle serverless cold starts
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -52,6 +54,7 @@ export function useChannelExtraction() {
       pollingRef.current = null;
     }
     retryCountRef.current = 0;
+    setState((prev) => ({ ...prev, isRetrying: false }));
   }, []);
 
   const pollJobStatus = useCallback(async (jobId: string) => {
@@ -61,17 +64,20 @@ export function useChannelExtraction() {
 
       if (!result.success) {
         // If job not found, retry a few times before giving up
-        // This handles race conditions where the job isn't fully created yet
+        // This handles serverless cold starts where different instances have separate memory
         if (result.error === 'Job not found' && retryCountRef.current < maxRetries) {
           retryCountRef.current++;
           console.log(`Job not found, retrying... (${retryCountRef.current}/${maxRetries})`);
+          // Show retrying state to user instead of error
+          setState((prev) => ({ ...prev, isRetrying: true }));
           return; // Don't throw, just wait for next poll
         }
         throw new Error(result.error || 'Failed to get job status');
       }
 
-      // Reset retry count on successful poll
+      // Reset retry count and retrying state on successful poll
       retryCountRef.current = 0;
+      setState((prev) => ({ ...prev, isRetrying: false }));
 
       const { data } = result;
 
@@ -127,11 +133,19 @@ export function useChannelExtraction() {
           throw new Error(result.error || 'Failed to start channel extraction');
         }
 
-        const { jobId } = result.data;
-        setState((prev) => ({ ...prev, jobId }));
+        const { jobId, progress: jobProgress, channelInfo: jobChannelInfo, results: jobResults } = result.data;
+        setState((prev) => ({
+          ...prev,
+          jobId,
+          progress: jobProgress || prev.progress,
+          channelInfo: jobChannelInfo || null,
+          results: jobResults || [],
+        }));
 
         // Start polling for job status after a brief delay
         // This gives the server time to fully initialize the job
+        // Note: In serverless environments, different instances may have separate memory,
+        // so we use longer delays and retries to handle this
         setTimeout(() => {
           // Initial poll
           pollJobStatus(jobId);
@@ -140,7 +154,7 @@ export function useChannelExtraction() {
           pollingRef.current = setInterval(() => {
             pollJobStatus(jobId);
           }, 1000);
-        }, 100);
+        }, 500);
       } catch (error) {
         setState((prev) => ({
           ...prev,

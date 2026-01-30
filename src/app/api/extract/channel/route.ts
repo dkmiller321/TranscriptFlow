@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractChannelId } from '@/lib/youtube/parser';
 import { resolveChannelId, fetchChannelInfo, fetchChannelVideos, fetchChannelTranscripts } from '@/lib/youtube/channel';
-import { createJob, updateJob, updateJobProgress, setJobAbortController, getJob } from '@/lib/jobs/store';
+import { createJob, updateJob, updateJobProgress, setJobAbortController, getJob, clearJobAbortController } from '@/lib/jobs/store';
 import { CHANNEL_LIMITS } from '@/lib/utils/constants';
 import type { ChannelOutputFormat, BatchProgress } from '@/lib/youtube/types';
 import { createClient } from '@/lib/supabase/server';
@@ -49,10 +49,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if channel extraction is allowed for user's tier
-    const rateLimitResult = await checkRateLimit(supabase, user?.id || null, 'channel_extraction');
+    const rateLimitResult = await checkRateLimit(supabase, user.id, 'channel_extraction');
 
     // Get user's tier and limits
-    const tier = await getUserTier(supabase, user?.id || null);
+    const tier = await getUserTier(supabase, user.id);
     const tierLimits = getTierLimits(tier);
 
     // Check if channel extraction feature is allowed for this tier
@@ -88,13 +88,13 @@ export async function POST(request: NextRequest) {
       Math.min(CHANNEL_LIMITS.MAX_VIDEOS, tierLimits.maxChannelVideos)
     );
 
-    // Create a job for tracking
-    const job = createJob(url, effectiveLimit, format);
+    // Create a job for tracking (now stored in Supabase)
+    const job = await createJob(url, effectiveLimit, format, user.id);
 
     // Start processing in the background with user context for tracking
-    processChannelExtraction(job.id, url, effectiveLimit, user?.id || null).catch((error) => {
+    processChannelExtraction(job.id, url, effectiveLimit, user.id).catch(async (error) => {
       console.error('Channel extraction failed:', error);
-      updateJob(job.id, {
+      await updateJob(job.id, {
         progress: {
           status: 'error',
           currentVideoIndex: 0,
@@ -111,6 +111,10 @@ export async function POST(request: NextRequest) {
       data: {
         jobId: job.id,
         status: 'started',
+        // Include initial job state so client doesn't need immediate poll
+        progress: job.progress,
+        channelInfo: null,
+        results: [],
       },
       rateLimit: {
         remaining: rateLimitResult.remaining,
@@ -133,14 +137,14 @@ async function processChannelExtraction(
   jobId: string,
   url: string,
   limit: number,
-  userId: string | null
+  userId: string
 ) {
   const abortController = new AbortController();
   setJobAbortController(jobId, abortController);
 
   try {
     // Update status to fetching videos
-    updateJobProgress(jobId, {
+    await updateJobProgress(jobId, {
       status: 'fetching_videos',
       currentVideoIndex: 0,
       totalVideos: 0,
@@ -156,13 +160,13 @@ async function processChannelExtraction(
 
     // Fetch channel info
     const channelInfo = await fetchChannelInfo(channelId);
-    updateJob(jobId, { channelInfo });
+    await updateJob(jobId, { channelInfo });
 
     // Fetch video list
     const videos = await fetchChannelVideos(channelId, limit);
-    updateJob(jobId, { videos });
+    await updateJob(jobId, { videos });
 
-    updateJobProgress(jobId, {
+    await updateJobProgress(jobId, {
       status: 'processing',
       currentVideoIndex: 0,
       totalVideos: videos.length,
@@ -173,8 +177,8 @@ async function processChannelExtraction(
     // Fetch transcripts with progress updates
     const results = await fetchChannelTranscripts(
       videos,
-      (progress: BatchProgress) => {
-        updateJobProgress(jobId, progress);
+      async (progress: BatchProgress) => {
+        await updateJobProgress(jobId, progress);
       },
       abortController.signal
     );
@@ -183,7 +187,7 @@ async function processChannelExtraction(
     const failedCount = results.filter((r) => r.transcript?.status !== 'success').length;
 
     // Update final results
-    updateJob(jobId, {
+    await updateJob(jobId, {
       results,
       progress: {
         status: 'completed',
@@ -206,8 +210,8 @@ async function processChannelExtraction(
       return;
     }
 
-    const job = getJob(jobId);
-    updateJob(jobId, {
+    const job = await getJob(jobId);
+    await updateJob(jobId, {
       progress: {
         status: 'error',
         currentVideoIndex: job?.progress.currentVideoIndex || 0,
@@ -217,5 +221,8 @@ async function processChannelExtraction(
         error: error instanceof Error ? error.message : 'Unknown error',
       },
     });
+  } finally {
+    // Clean up the abort controller from memory
+    clearJobAbortController(jobId);
   }
 }

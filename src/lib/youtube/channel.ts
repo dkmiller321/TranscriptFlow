@@ -264,7 +264,7 @@ export async function fetchChannelVideos(
   return videos;
 }
 
-export type ProgressCallback = (progress: BatchProgress) => void;
+export type ProgressCallback = (progress: BatchProgress) => void | Promise<void>;
 
 export async function fetchChannelTranscripts(
   videos: ChannelVideoItem[],
@@ -278,7 +278,7 @@ export async function fetchChannelTranscripts(
   for (let i = 0; i < videos.length; i++) {
     // Check for cancellation
     if (signal?.aborted) {
-      onProgress?.({
+      await onProgress?.({
         status: 'cancelled',
         currentVideoIndex: i,
         totalVideos: videos.length,
@@ -291,7 +291,7 @@ export async function fetchChannelTranscripts(
 
     const video = videos[i];
 
-    onProgress?.({
+    await onProgress?.({
       status: 'processing',
       currentVideoIndex: i,
       totalVideos: videos.length,
@@ -343,7 +343,7 @@ export async function fetchChannelTranscripts(
     }
   }
 
-  onProgress?.({
+  await onProgress?.({
     status: signal?.aborted ? 'cancelled' : 'completed',
     currentVideoIndex: videos.length,
     totalVideos: videos.length,

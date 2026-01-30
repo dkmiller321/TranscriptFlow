@@ -7,7 +7,7 @@ export async function GET(
 ) {
   const { jobId } = await params;
 
-  const job = getJob(jobId);
+  const job = await getJob(jobId);
 
   if (!job) {
     return NextResponse.json(
@@ -63,7 +63,7 @@ export async function DELETE(
   const action = url.searchParams.get('action');
 
   if (action === 'cancel') {
-    const cancelled = cancelJob(jobId);
+    const cancelled = await cancelJob(jobId);
 
     if (!cancelled) {
       return NextResponse.json(
@@ -79,7 +79,7 @@ export async function DELETE(
   }
 
   // Default: delete the job
-  const deleted = deleteJob(jobId);
+  const deleted = await deleteJob(jobId);
 
   if (!deleted) {
     return NextResponse.json(

@@ -1,14 +1,14 @@
 :root {
   /* Colors - Light Theme - Eucalyptus Grove */
-  --color-primary: #4B6E48;
-  --color-primary-hover: #3d5a3b;
-  --color-primary-light: #e8ede8;
+  --color-primary: #3d6b38;
+  --color-primary-hover: #325930;
+  --color-primary-light: #e5ede4;
 
   --color-secondary: #898989;
   --color-secondary-hover: #6b6b6b;
 
-  --color-success: #4B6E48;
-  --color-success-light: #e8ede8;
+  --color-success: #3d6b38;
+  --color-success-light: #e5ede4;
 
   --color-warning: #B2AC88;
   --color-warning-light: #f5f4ef;
@@ -28,7 +28,7 @@
 
   /* Borders */
   --color-border: #d4d2d0;
-  --color-border-focus: #4B6E48;
+  --color-border-focus: #3d6b38;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -79,8 +79,8 @@
 
 /* Dark Theme - Eucalyptus Grove */
 .dark {
-  --color-primary: #4B6E48;
-  --color-primary-hover: #5d8659;
+  --color-primary: #4a8a44;
+  --color-primary-hover: #5a9a54;
   --color-primary-light: #2a3d29;
 
   --color-bg: #0a0f0a;
@@ -92,7 +92,7 @@
   --color-text-muted: #898989;
 
   --color-border: #2a3d29;
-  --color-border-focus: #4B6E48;
+  --color-border-focus: #4a8a44;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);

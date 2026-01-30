@@ -85,9 +85,9 @@ module.exports = {
   				600: 'hsl(20 9% 90%)',
   			},
   			forest: {
-  				400: 'hsl(116 20% 46%)',
-  				500: 'hsl(116 20% 36%)',
-  				600: 'hsl(116 20% 26%)',
+  				400: 'hsl(116 32% 42%)',
+  				500: 'hsl(116 32% 32%)',
+  				600: 'hsl(116 32% 24%)',
   			},
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
@@ -101,9 +101,9 @@ module.exports = {
   			},
   		},
   		boxShadow: {
-  			glow: '0 0 40px -10px hsl(116 20% 36% / 0.5)',
-  			'glow-lg': '0 0 60px -15px hsl(116 20% 36% / 0.6)',
-  			'glow-multi': '0 0 60px -15px hsl(53 20% 61% / 0.4), 0 0 40px -10px hsl(116 20% 36% / 0.3), 0 0 30px -5px hsl(0 0% 54% / 0.2)',
+  			glow: '0 0 40px -10px hsl(116 32% 32% / 0.5)',
+  			'glow-lg': '0 0 60px -15px hsl(116 32% 32% / 0.6)',
+  			'glow-multi': '0 0 60px -15px hsl(53 20% 61% / 0.4), 0 0 40px -10px hsl(116 32% 32% / 0.3), 0 0 30px -5px hsl(0 0% 54% / 0.2)',
   		},
   		keyframes: {
   			'accordion-down': {
@@ -147,8 +147,8 @@ module.exports = {
   				'75%': { borderRadius: '60% 40% 60% 30% / 70% 30% 50% 60%' },
   			},
   			'pulse-glow': {
-  				'0%, 100%': { opacity: '1', boxShadow: '0 0 20px hsl(116 20% 36% / 0.4)' },
-  				'50%': { opacity: '0.8', boxShadow: '0 0 40px hsl(116 20% 36% / 0.6)' },
+  				'0%, 100%': { opacity: '1', boxShadow: '0 0 20px hsl(116 32% 32% / 0.4)' },
+  				'50%': { opacity: '0.8', boxShadow: '0 0 40px hsl(116 32% 32% / 0.6)' },
   			},
   			'gradient-shift': {
   				'0%, 100%': { backgroundPosition: '0% 50%' },

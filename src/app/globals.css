@@ -112,7 +112,7 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 10%;
 
-    --primary: 116 20% 36%;
+    --primary: 116 32% 32%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 20 9% 95%;
@@ -129,7 +129,7 @@ body {
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 116 20% 36%;
+    --ring: 116 32% 32%;
 
     --radius: 1rem;
 
@@ -137,11 +137,11 @@ body {
     --gradient-sage: 53 20% 61%;
     --gradient-stone: 0 0% 54%;
     --gradient-cream: 20 9% 95%;
-    --gradient-forest: 116 20% 36%;
+    --gradient-forest: 116 32% 32%;
 
     /* Glow effects */
     --glow-sage: 53 20% 61%;
-    --glow-forest: 116 20% 36%;
+    --glow-forest: 116 32% 32%;
     --glow-stone: 0 0% 54%;
 
     /* Glass effect */
@@ -151,12 +151,12 @@ body {
     /* Sidebar */
     --sidebar-background: 20 9% 97%;
     --sidebar-foreground: 116 15% 25%;
-    --sidebar-primary: 116 20% 36%;
+    --sidebar-primary: 116 32% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 53 15% 92%;
     --sidebar-accent-foreground: 116 20% 20%;
     --sidebar-border: 53 10% 88%;
-    --sidebar-ring: 116 20% 36%;
+    --sidebar-ring: 116 32% 32%;
 
     /* Charts */
     --chart-1: 12 76% 61%;
@@ -177,7 +177,7 @@ body {
     --popover: 240 15% 8%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 116 20% 36%;
+    --primary: 116 35% 45%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 10% 15%;
@@ -194,21 +194,21 @@ body {
 
     --border: 240 10% 18%;
     --input: 240 10% 18%;
-    --ring: 116 20% 36%;
+    --ring: 116 35% 45%;
 
     /* Glass effect - darker for dark mode */
     --glass-bg: 240 15% 12% / 0.6;
-    --glass-border: 116 20% 36% / 0.15;
+    --glass-border: 116 35% 45% / 0.15;
 
     /* Sidebar */
     --sidebar-background: 240 15% 6%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 116 20% 36%;
+    --sidebar-primary: 116 35% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 10% 12%;
     --sidebar-accent-foreground: 0 0% 95%;
     --sidebar-border: 240 10% 15%;
-    --sidebar-ring: 116 20% 36%;
+    --sidebar-ring: 116 35% 45%;
 
     /* Charts */
     --chart-1: 220 70% 50%;
@@ -278,7 +278,7 @@ body {
   }
 
   .glow-forest {
-    box-shadow: 0 0 40px -10px hsl(116 20% 36% / 0.5);
+    box-shadow: 0 0 40px -10px hsl(116 32% 32% / 0.5);
   }
 
   .glow-stone {
@@ -288,7 +288,7 @@ body {
   .glow-multi {
     box-shadow:
       0 0 60px -15px hsl(53 20% 61% / 0.4),
-      0 0 40px -10px hsl(116 20% 36% / 0.3),
+      0 0 40px -10px hsl(116 32% 32% / 0.3),
       0 0 30px -5px hsl(0 0% 54% / 0.2);
   }
 
@@ -332,7 +332,7 @@ body {
     padding: 1px;
     background: linear-gradient(135deg,
       hsl(53 20% 61%) 0%,
-      hsl(116 20% 36%) 50%,
+      hsl(116 32% 32%) 50%,
       hsl(0 0% 54%) 100%
     );
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -345,7 +345,7 @@ body {
   .progress-glow {
     box-shadow:
       0 0 10px hsl(53 20% 61% / 0.5),
-      0 0 20px hsl(116 20% 36% / 0.3),
+      0 0 20px hsl(116 32% 32% / 0.3),
       0 0 30px hsl(0 0% 54% / 0.2);
   }
 
@@ -433,11 +433,11 @@ body {
 @keyframes pulse-glow {
   0%, 100% {
     opacity: 1;
-    box-shadow: 0 0 20px hsl(116 20% 36% / 0.4);
+    box-shadow: 0 0 20px hsl(116 32% 32% / 0.4);
   }
   50% {
     opacity: 0.8;
-    box-shadow: 0 0 40px hsl(116 20% 36% / 0.6);
+    box-shadow: 0 0 40px hsl(116 32% 32% / 0.6);
   }
 }
 
