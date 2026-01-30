@@ -8,10 +8,9 @@ export default function MainLayout({
   return (
     <>
       <Header />
-      <main style={{
+      <main className="main-content-responsive" style={{
         maxWidth: 'var(--max-content-width)',
         margin: '0 auto',
-        padding: 'var(--spacing-xl)'
       }}>
         {children}
       </main>

@@ -499,3 +499,20 @@ body {
 .stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
 .stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
 .stagger-children > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* Responsive main content padding */
+.main-content-responsive {
+  padding: var(--spacing-md);
+}
+
+@media (min-width: 640px) {
+  .main-content-responsive {
+    padding: var(--spacing-lg);
+  }
+}
+
+@media (min-width: 768px) {
+  .main-content-responsive {
+    padding: var(--spacing-xl);
+  }
+}

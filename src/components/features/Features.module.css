@@ -724,3 +724,218 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
+
+/* ==================== MOBILE RESPONSIVE STYLES ==================== */
+
+/* Mobile: up to 640px */
+@media (max-width: 639px) {
+  /* URL Input */
+  .urlInputWrapper {
+    flex-direction: column;
+  }
+
+  .urlInput {
+    height: 44px;
+    font-size: var(--text-sm);
+  }
+
+  /* Channel Options */
+  .channelOptions {
+    padding: var(--spacing-sm);
+  }
+
+  .channelFormatToggle {
+    flex-direction: column;
+  }
+
+  /* Channel Progress */
+  .channelProgress {
+    padding: var(--spacing-md);
+  }
+
+  .channelInfoHeader {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .channelThumbnail {
+    width: 56px;
+    height: 56px;
+  }
+
+  .channelName {
+    font-size: var(--text-base);
+  }
+
+  /* Video Preview */
+  .videoPreview {
+    flex-direction: column;
+    padding: var(--spacing-md);
+  }
+
+  .thumbnailLink {
+    width: 100%;
+  }
+
+  .thumbnailWrapper {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .videoTitle {
+    font-size: var(--text-base);
+  }
+
+  .videoMeta {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  /* Transcript Viewer */
+  .transcriptHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+  }
+
+  .viewModeToggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .viewModeButton {
+    flex: 1;
+    text-align: center;
+    padding: var(--spacing-sm);
+  }
+
+  .searchWrapper {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .searchInput {
+    width: 100%;
+    height: 40px;
+  }
+
+  .matchCount {
+    text-align: center;
+  }
+
+  .transcriptContent {
+    padding: var(--spacing-md);
+    max-height: 60vh;
+  }
+
+  .transcriptSegment {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .timestamp {
+    font-size: var(--text-xs);
+  }
+
+  /* Export Options */
+  .exportOptions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .exportDivider {
+    display: none;
+  }
+
+  .exportLabel {
+    text-align: center;
+  }
+
+  /* Channel Results */
+  .channelResultsHeader {
+    flex-direction: column;
+    text-align: center;
+    padding: var(--spacing-md);
+  }
+
+  .channelResultsStats {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .channelExportSection {
+    padding: var(--spacing-md);
+  }
+
+  .exportButtons {
+    flex-direction: column;
+  }
+
+  .channelVideoList {
+    padding: var(--spacing-md);
+  }
+
+  /* Video List Items */
+  .videoListItem {
+    flex-direction: column;
+  }
+
+  .videoListThumbnail {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  /* History Items */
+  .historyItem {
+    flex-direction: column;
+  }
+
+  .historyThumbnail {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .historyMeta {
+    flex-wrap: wrap;
+  }
+
+  .historyActions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: var(--spacing-sm);
+  }
+
+  /* Saved Transcripts Grid */
+  .savedTranscripts {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablet: 640px to 768px */
+@media (min-width: 640px) and (max-width: 767px) {
+  .thumbnailWrapper {
+    width: 180px;
+    height: 101px;
+  }
+
+  .searchInput {
+    width: 160px;
+  }
+
+  .videoListThumbnail {
+    width: 100px;
+    height: 56px;
+  }
+
+  .historyThumbnail {
+    width: 100px;
+    height: 56px;
+  }
+
+  .savedTranscripts {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+}
