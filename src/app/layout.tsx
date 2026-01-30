@@ -53,6 +53,18 @@ export const metadata: Metadata = {
   },
 };
 
+// Script to set initial theme before hydration to prevent flash
+const themeScript = `
+  (function() {
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const shouldBeDark = stored ? stored === 'dark' : prefersDark;
+    if (shouldBeDark) {
+      document.documentElement.classList.add('dark');
+    }
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: {
@@ -61,11 +73,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${sora.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
-      data-theme="dark"
+      className={`${sora.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="dark bg-background text-foreground antialiased flex min-h-screen flex-col font-sans">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className="bg-background text-foreground antialiased flex min-h-screen flex-col font-sans">
         <div className="flex-1">{children}</div>
         <Footer />
       </body>

@@ -18,30 +18,6 @@ import GlassCard from '@/components/ui/GlassCard';
 import GradientButton from '@/components/ui/GradientButton';
 import type { ChannelOutputFormat } from '@/lib/youtube/types';
 
-const EXAMPLE_TRANSCRIPT = `{
-  "videoId": "dQw4w9WgXcQ",
-  "title": "How to Build AI Agents",
-  "segments": [
-    {
-      "text": "Welcome to this tutorial on building AI agents.",
-      "offset": 0,
-      "duration": 3.2
-    },
-    {
-      "text": "Today we'll cover the core concepts you need.",
-      "offset": 3.2,
-      "duration": 2.8
-    },
-    {
-      "text": "Let's start with understanding agent architecture.",
-      "offset": 6.0,
-      "duration": 3.1
-    }
-  ],
-  "wordCount": 847,
-  "duration": "12:34"
-}`;
-
 function HomeContent() {
   const resultsRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
@@ -111,20 +87,6 @@ function HomeContent() {
   const handleReset = () => {
     resetVideo();
     resetChannel();
-  };
-
-  const handleCopyExample = () => {
-    navigator.clipboard.writeText(EXAMPLE_TRANSCRIPT);
-  };
-
-  const handleDownloadExample = () => {
-    const blob = new Blob([EXAMPLE_TRANSCRIPT], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'transcript-example.json';
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const isChannelMode = isChannelLoading || (channelInfo && results.length > 0);
@@ -208,6 +170,7 @@ function HomeContent() {
                     plainText={plainText}
                     srtContent={srtContent}
                     videoTitle={videoInfo.title}
+                    videoId={videoInfo.videoId}
                   />
                   <TranscriptViewer segments={segments} plainText={plainText} />
                 </div>
@@ -215,47 +178,6 @@ function HomeContent() {
             </div>
           </section>
         )}
-
-        {/* ==================== EXAMPLE OUTPUT ==================== */}
-        <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
-          <div className="max-w-3xl mx-auto">
-            <GlassCard variant="strong" className="overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 bg-secondary/50 border-b border-white/5">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500/60" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
-                  <div className="w-3 h-3 rounded-full bg-forest-500/60" />
-                </div>
-                <span className="text-xs text-muted-foreground font-mono ml-2">transcript.json</span>
-              </div>
-
-              <pre className="p-4 overflow-x-auto text-sm font-mono text-foreground/90 leading-relaxed">
-                <code>{EXAMPLE_TRANSCRIPT}</code>
-              </pre>
-
-              <div className="flex gap-3 px-4 py-3 bg-secondary/30 border-t border-white/5">
-                <GradientButton
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyExample}
-                >
-                  Copy to clipboard
-                </GradientButton>
-                <GradientButton
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadExample}
-                >
-                  Download JSON
-                </GradientButton>
-              </div>
-            </GlassCard>
-
-            <p className="text-center text-muted-foreground mt-6">
-              What you get: <span className="gradient-text font-semibold">structured data</span> you can actually work with.
-            </p>
-          </div>
-        </section>
 
         {/* ==================== WHO IT'S FOR ==================== */}
         <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
@@ -335,7 +257,7 @@ function HomeContent() {
 
         {/* ==================== PRICING ==================== */}
         <section className="px-4 py-16 md:py-20 md:px-8 lg:px-12">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-5xl mx-auto">
             <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-4">
               <span className="gradient-text">Pricing</span>
             </h2>
@@ -343,70 +265,102 @@ function HomeContent() {
               Start free. Upgrade if you need more.
             </p>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* Free Tier */}
               <GlassCard hover className="p-6">
                 <h3 className="text-lg font-semibold text-foreground mb-1">Free</h3>
-                <p className="text-sm text-muted-foreground mb-6">For occasional use</p>
+                <p className="text-sm text-muted-foreground mb-2">Perfect for trying out</p>
+                <p className="text-3xl font-bold text-foreground mb-6">$0</p>
 
                 <ul className="space-y-3 text-sm">
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-foreground">Single video transcripts</span>
+                    <span className="text-foreground">3 videos per day</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-foreground">Copy to clipboard</span>
+                    <span className="text-foreground">TXT export format</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-foreground">Plain text export</span>
+                    <span className="text-foreground">Basic video extraction</span>
                   </li>
                 </ul>
               </GlassCard>
 
+              {/* Pro Tier */}
               <GlassCard variant="strong" glow className="p-6 relative gradient-border">
-                <div className="absolute -top-3 left-6">
-                  <span className="gradient-primary text-white text-xs font-medium px-3 py-1 rounded-full">Pro</span>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="gradient-primary text-white text-xs font-medium px-3 py-1 rounded-full">Most Popular</span>
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-1">Pro</h3>
-                <p className="text-sm text-muted-foreground mb-6">For regular use</p>
+                <p className="text-sm text-muted-foreground mb-2">For creators & researchers</p>
+                <p className="text-3xl font-bold gradient-text mb-6">$9.99<span className="text-sm text-muted-foreground font-normal">/mo</span></p>
 
                 <ul className="space-y-3 text-sm">
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-foreground">Entire channel extraction</span>
+                    <span className="text-foreground">50 videos per day</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-foreground">Batch processing</span>
+                    <span className="text-foreground">All formats (TXT, SRT, JSON)</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-foreground">JSON + SRT exports</span>
+                    <span className="text-foreground">Channel extraction (25 videos)</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-foreground">ZIP downloads</span>
+                    <span className="text-foreground">No watermarks</span>
+                  </li>
+                </ul>
+              </GlassCard>
+
+              {/* Business Tier */}
+              <GlassCard hover className="p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-1">Business</h3>
+                <p className="text-sm text-muted-foreground mb-2">For teams & power users</p>
+                <p className="text-3xl font-bold text-foreground mb-6">$29.99<span className="text-sm text-muted-foreground font-normal">/mo</span></p>
+
+                <ul className="space-y-3 text-sm">
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">Unlimited extractions</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span className="text-foreground">Saved transcript history</span>
+                    <span className="text-foreground">Channel extraction (500 videos)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">API access</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-forest-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-foreground">Priority support</span>
                   </li>
                 </ul>
               </GlassCard>

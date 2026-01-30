@@ -78,7 +78,7 @@
 }
 
 /* Dark Theme - Eucalyptus Grove */
-[data-theme="dark"] {
+.dark {
   --color-primary: #4B6E48;
   --color-primary-hover: #5d8659;
   --color-primary-light: #2a3d29;

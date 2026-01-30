@@ -26,43 +26,46 @@ export function Header() {
         </Link>
 
         <nav className={styles.nav}>
-          {!loading && (
+          <Link href={ROUTES.PRICING} className={styles.navLink}>
+            Pricing
+          </Link>
+
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-16 bg-muted/50 rounded animate-pulse" />
+              <div className="h-8 w-20 bg-muted/50 rounded animate-pulse" />
+            </div>
+          ) : user ? (
             <>
-              <Link href={ROUTES.PRICING} className={styles.navLink}>
-                Pricing
+              <Link href={ROUTES.HISTORY} className={styles.navLink}>
+                History
               </Link>
-              {user ? (
-                <>
-                  <Link href={ROUTES.HISTORY} className={styles.navLink}>
-                    History
-                  </Link>
-                  <Link href={ROUTES.LIBRARY} className={styles.navLink}>
-                    Library
-                  </Link>
-                  <Link href={ROUTES.SETTINGS} className={styles.navLink}>
-                    Settings
-                  </Link>
-                  <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                    Sign Out
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Link href={ROUTES.LOGIN}>
-                    <Button variant="ghost" size="sm">
-                      Log In
-                    </Button>
-                  </Link>
-                  <Link href={ROUTES.SIGNUP}>
-                    <Button variant="primary" size="sm">
-                      Sign Up
-                    </Button>
-                  </Link>
-                </>
-              )}
-              <ThemeToggle />
+              <Link href={ROUTES.LIBRARY} className={styles.navLink}>
+                Library
+              </Link>
+              <Link href={ROUTES.SETTINGS} className={styles.navLink}>
+                Settings
+              </Link>
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                Sign Out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link href={ROUTES.LOGIN}>
+                <Button variant="ghost" size="sm">
+                  Log In
+                </Button>
+              </Link>
+              <Link href={ROUTES.SIGNUP}>
+                <Button variant="primary" size="sm">
+                  Sign Up
+                </Button>
+              </Link>
             </>
           )}
+
+          <ThemeToggle />
         </nav>
       </div>
     </header>

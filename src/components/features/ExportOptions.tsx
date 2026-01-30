@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -12,12 +13,14 @@ import {
 } from '@/components/ui/tooltip';
 import type { TranscriptSegment } from '@/lib/youtube/types';
 import { generateExportContent } from '@/lib/youtube/export';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ExportOptionsProps {
   segments: TranscriptSegment[];
   plainText: string;
   srtContent: string;
   videoTitle: string;
+  videoId: string;
 }
 
 type ExportFormat = 'txt' | 'srt' | 'json';
@@ -27,8 +30,12 @@ export function ExportOptions({
   plainText,
   srtContent,
   videoTitle,
+  videoId,
 }: ExportOptionsProps) {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [copiedFormat, setCopiedFormat] = useState<ExportFormat | 'clipboard' | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const copyToClipboard = async () => {
     try {
@@ -71,6 +78,44 @@ export function ExportOptions({
 
     setCopiedFormat(format);
     setTimeout(() => setCopiedFormat(null), 2000);
+  };
+
+  const saveToLibrary = async () => {
+    if (!user) {
+      router.push('/login?redirect=/');
+      return;
+    }
+
+    setSaveStatus('saving');
+
+    try {
+      const jsonContent = generateExportContent(segments, 'json', videoTitle);
+
+      const response = await fetch('/api/transcripts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId,
+          videoTitle,
+          content: plainText,
+          contentSrt: srtContent,
+          contentJson: jsonContent,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      } else {
+        throw new Error(result.error || 'Failed to save');
+      }
+    } catch (error) {
+      console.error('Save to library error:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
   };
 
   return (
@@ -116,6 +161,54 @@ export function ExportOptions({
               </TooltipTrigger>
               <TooltipContent>
                 <p>Copy plain text transcript to clipboard</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          {/* Save to Library */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
+                  onClick={saveToLibrary}
+                  disabled={saveStatus === 'saving' || authLoading}
+                  className="w-full transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {saveStatus === 'saving' ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Saving...
+                    </>
+                  ) : saveStatus === 'saved' ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Saved to Library!
+                    </>
+                  ) : saveStatus === 'error' ? (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Failed to save
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      {user ? 'Save to Library' : 'Sign in to Save'}
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{user ? 'Save transcript to your library for later' : 'Sign in to save transcripts to your library'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
