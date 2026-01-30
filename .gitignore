@@ -47,3 +47,9 @@ playwright/.cache/
 .claude/
 
 .vercel
+
+# Design knowledge articles (keep SKILL.md, ignore scraped content)
+docs/design-knowledge/figma-design-knowledge/articles/
+
+# Supabase
+supabase/.temp/
