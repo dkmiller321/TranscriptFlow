@@ -259,17 +259,20 @@ body {
     @apply bg-gradient-to-r from-sage-600 via-forest-600 to-stone-600;
   }
 
-  /* Glassmorphism */
+  /* Glassmorphism - reduced blur on mobile for performance */
   .glass {
-    @apply bg-card/60 backdrop-blur-xl border border-white/10 shadow-xl;
+    @apply bg-card/70 border border-white/10 shadow-xl;
+    @apply sm:bg-card/60 sm:backdrop-blur-xl;
   }
 
   .glass-strong {
-    @apply bg-card/80 backdrop-blur-2xl border border-white/15 shadow-2xl;
+    @apply bg-card/85 border border-white/15 shadow-2xl;
+    @apply sm:bg-card/80 sm:backdrop-blur-2xl;
   }
 
   .glass-subtle {
-    @apply bg-card/40 backdrop-blur-lg border border-white/5;
+    @apply bg-card/50 border border-white/5;
+    @apply sm:bg-card/40 sm:backdrop-blur-lg;
   }
 
   /* Glow effects */

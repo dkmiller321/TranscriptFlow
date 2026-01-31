@@ -1,0 +1,9 @@
+{
+  "name": "figma-design-knowledge",
+  "version": "1.0.0",
+  "description": "Figma Resource Library scraper for Claude Code",
+  "scripts": {
+    "scrape": "bun run scrape-figma.ts"
+  },
+  "type": "module"
+}
