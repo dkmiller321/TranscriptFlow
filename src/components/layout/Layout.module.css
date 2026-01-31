@@ -102,8 +102,9 @@
     padding: 0 var(--spacing-sm);
   }
 
+  /* Hide desktop nav on mobile - hamburger menu takes over */
   .nav {
-    gap: var(--spacing-xs);
+    display: none !important;
   }
 
   .navLink {

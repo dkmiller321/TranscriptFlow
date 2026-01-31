@@ -1,5 +1,6 @@
 .container {
   max-width: 1000px;
+  width: 100%;
 }
 
 .loadingContainer {
@@ -42,6 +43,8 @@
   background-color: var(--color-bg-secondary);
   border-radius: var(--radius-lg);
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tagFiltersLabel {
