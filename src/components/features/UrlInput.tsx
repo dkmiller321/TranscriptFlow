@@ -59,7 +59,7 @@ export function UrlInput({ onSubmit, onChannelSubmit, isLoading, ctaText, placeh
   return (
     <form onSubmit={handleSubmit} className="w-full">
       {/* Main input wrapper with glassmorphism effect */}
-      <div className="relative flex gap-3 p-1.5 rounded-2xl bg-secondary/50 backdrop-blur-sm border border-border/50 shadow-lg transition-all duration-300 focus-within:border-primary/50 focus-within:shadow-primary/5 focus-within:shadow-xl">
+      <div className="relative flex flex-col sm:flex-row gap-2 sm:gap-3 p-1.5 rounded-2xl bg-secondary/50 backdrop-blur-sm border border-border/50 shadow-lg transition-all duration-300 focus-within:border-primary/50 focus-within:shadow-primary/5 focus-within:shadow-xl">
         <input
           type="text"
           value={url}
@@ -73,14 +73,14 @@ export function UrlInput({ onSubmit, onChannelSubmit, isLoading, ctaText, placeh
             setError('');
           }}
           placeholder={placeholder || "Paste a YouTube video or channel URL"}
-          className="flex-1 h-12 px-4 bg-transparent text-foreground placeholder:text-muted-foreground text-base focus:outline-none"
+          className="flex-1 h-12 px-4 bg-transparent text-foreground placeholder:text-muted-foreground text-sm sm:text-base focus:outline-none min-w-0"
           disabled={isLoading}
         />
         <Button
           type="submit"
           disabled={!url.trim() || isLoading}
           size="lg"
-          className="h-12 px-6 rounded-xl font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+          className="h-12 px-6 rounded-xl font-semibold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto shrink-0"
         >
           {isLoading ? (
             <span className="flex items-center gap-2">
