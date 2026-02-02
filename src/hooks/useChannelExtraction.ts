@@ -54,7 +54,8 @@ export function useChannelExtraction() {
       pollingRef.current = null;
     }
     retryCountRef.current = 0;
-    setState((prev) => ({ ...prev, isRetrying: false }));
+    // Note: Don't setState here - let the caller handle state updates
+    // to avoid multiple setState calls interfering with each other
   }, []);
 
   const pollJobStatus = useCallback(async (jobId: string) => {
@@ -69,45 +70,66 @@ export function useChannelExtraction() {
           retryCountRef.current++;
           console.log(`Job not found, retrying... (${retryCountRef.current}/${maxRetries})`);
           // Show retrying state to user instead of error
-          setState((prev) => ({ ...prev, isRetrying: true }));
+          setState((prev) => {
+            // Ignore if we've moved on to a different job
+            if (prev.jobId !== jobId) return prev;
+            return { ...prev, isRetrying: true };
+          });
           return; // Don't throw, just wait for next poll
         }
         throw new Error(result.error || 'Failed to get job status');
       }
 
-      // Reset retry count and retrying state on successful poll
+      // Reset retry count on successful poll
       retryCountRef.current = 0;
-      setState((prev) => ({ ...prev, isRetrying: false }));
 
       const { data } = result;
-
-      setState((prev) => ({
-        ...prev,
-        channelInfo: data.channelInfo || prev.channelInfo,
-        progress: data.progress,
-        results: data.results || prev.results,
-      }));
-
-      // Stop polling if job is complete
-      if (
+      const isComplete =
         data.status === 'completed' ||
         data.status === 'cancelled' ||
-        data.status === 'error'
-      ) {
+        data.status === 'error';
+
+      // Don't stop polling if completed but results are empty (race condition with DB write)
+      // Keep polling until results actually appear
+      const hasResults = data.results && data.results.length > 0;
+      const shouldStopPolling = isComplete && (hasResults || data.status !== 'completed');
+
+      if (shouldStopPolling) {
         stopPolling();
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: data.progress?.error || null,
-        }));
       }
+
+      // Single setState to update all values at once
+      // This prevents multiple setState calls from interfering with each other
+      setState((prev) => {
+        // Ignore stale poll responses from a previous job
+        // This prevents race conditions when starting a new extraction
+        if (prev.jobId !== jobId) return prev;
+
+        // Only mark as done loading if we should actually stop polling
+        // (i.e., we have results or it's an error/cancelled status)
+        return {
+          ...prev,
+          isRetrying: false,
+          channelInfo: data.channelInfo || prev.channelInfo,
+          progress: data.progress,
+          results: data.results && data.results.length > 0 ? data.results : prev.results,
+          ...(shouldStopPolling && {
+            isLoading: false,
+            error: data.progress?.error || null,
+          }),
+        };
+      });
     } catch (error) {
       stopPolling();
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to get job status',
-      }));
+      setState((prev) => {
+        // Ignore errors from stale polls
+        if (prev.jobId !== jobId) return prev;
+        return {
+          ...prev,
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Failed to get job status',
+        };
+      });
     }
   }, [stopPolling]);
 
@@ -180,7 +202,7 @@ export function useChannelExtraction() {
 
   const reset = useCallback(() => {
     stopPolling();
-    setState(initialState);
+    setState(initialState); // initialState already has isRetrying: false
   }, [stopPolling]);
 
   // Cleanup on unmount
