@@ -79,14 +79,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${syne.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${syne.variable} ${inter.variable} ${jetbrainsMono.variable} dark scroll-smooth`}
       suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="bg-background text-foreground antialiased flex min-h-screen flex-col font-sans">
-        <div className="flex-1">{children}</div>
+        {/* Decorative gradient overlay */}
+        <div
+          className="fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none z-0"
+          aria-hidden="true"
+        />
+        <div className="flex-1 relative z-10">{children}</div>
         <Footer />
       </body>
     </html>

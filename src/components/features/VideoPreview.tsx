@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { VideoInfo } from '@/lib/youtube/types';
@@ -14,6 +15,11 @@ interface VideoPreviewProps {
 
 export function VideoPreview({ videoInfo, wordCount }: VideoPreviewProps) {
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+    >
     <Card className="bg-card/50 backdrop-blur-sm border-border/50 shadow-xl overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
       <CardContent className="relative p-6">
@@ -88,5 +94,6 @@ export function VideoPreview({ videoInfo, wordCount }: VideoPreviewProps) {
         </div>
       </CardContent>
     </Card>
+    </motion.div>
   );
 }

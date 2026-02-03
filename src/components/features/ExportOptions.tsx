@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -119,6 +120,11 @@ export function ExportOptions({
   };
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
+    >
     <Card className="bg-card/50 backdrop-blur-sm border-border/50 shadow-lg">
       <CardHeader className="pb-4">
         <CardTitle className="text-lg flex items-center gap-2">
@@ -141,22 +147,37 @@ export function ExportOptions({
                   variant="primary"
                   onClick={copyToClipboard}
                   className="w-full transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  aria-label="Copy transcript to clipboard"
                 >
-                  {copiedFormat === 'clipboard' ? (
-                    <>
-                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                      </svg>
-                      Copy to Clipboard
-                    </>
-                  )}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {copiedFormat === 'clipboard' ? (
+                      <motion.span
+                        key="copied"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-2 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Copied!
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="copy"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                        Copy to Clipboard
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -227,6 +248,7 @@ export function ExportOptions({
                   <Button
                     variant="secondary"
                     onClick={() => downloadFile('txt')}
+                    aria-label="Download transcript as TXT file"
                     className="flex flex-col h-auto py-3 gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -249,6 +271,7 @@ export function ExportOptions({
                   <Button
                     variant="secondary"
                     onClick={() => downloadFile('srt')}
+                    aria-label="Download transcript as SRT subtitle file"
                     className="flex flex-col h-auto py-3 gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -271,6 +294,7 @@ export function ExportOptions({
                   <Button
                     variant="secondary"
                     onClick={() => downloadFile('json')}
+                    aria-label="Download transcript as JSON file"
                     className="flex flex-col h-auto py-3 gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -290,5 +314,6 @@ export function ExportOptions({
         </div>
       </CardContent>
     </Card>
+    </motion.div>
   );
 }

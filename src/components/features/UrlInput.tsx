@@ -105,12 +105,14 @@ export function UrlInput({ onSubmit, onChannelSubmit, isLoading, ctaText, placeh
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder={placeholder || "Paste a YouTube video or channel URL"}
+            aria-label="YouTube video or channel URL"
+            aria-describedby={error ? "url-error" : undefined}
             className={cn(
               "flex-1 h-12 pl-12 pr-4",
               "bg-transparent text-foreground",
               "placeholder:text-muted-foreground/60",
               "text-sm sm:text-base",
-              "focus:outline-none",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-0",
               "transition-colors duration-200"
             )}
             disabled={isLoading}
@@ -295,8 +297,12 @@ export function UrlInput({ onSubmit, onChannelSubmit, isLoading, ctaText, placeh
 
       {/* Error message */}
       {error && (
-        <div className="mt-3 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
-          <svg className="w-4 h-4 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div
+          id="url-error"
+          role="alert"
+          className="mt-3 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200"
+        >
+          <svg className="w-4 h-4 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <p className="text-sm text-destructive font-medium">{error}</p>

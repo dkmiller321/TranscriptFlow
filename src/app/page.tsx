@@ -9,6 +9,8 @@ import { TranscriptViewer } from '@/components/features/TranscriptViewer';
 import { ExportOptions } from '@/components/features/ExportOptions';
 import { ChannelProgress } from '@/components/features/ChannelProgress';
 import { ChannelResults } from '@/components/features/ChannelResults';
+import { TranscriptSkeleton } from '@/components/features/TranscriptSkeleton';
+import { SocialProof } from '@/components/features/SocialProof';
 import { useExtraction } from '@/hooks/useExtraction';
 import { useChannelExtraction } from '@/hooks/useChannelExtraction';
 import { Spinner } from '@/components/ui/Spinner';
@@ -157,9 +159,9 @@ function HomeContent() {
 
             {/* Loading states */}
             {isVideoLoading && (
-              <div className="flex flex-col items-center gap-4 py-12 animate-in fade-in">
+              <div className="flex flex-col items-center gap-4 py-8 animate-in fade-in">
                 <Spinner size="lg" variant="gradient" />
-                <p className="text-muted-foreground text-sm">Pulling transcript...</p>
+                <p className="text-muted-foreground text-sm">Extracting transcript...</p>
               </div>
             )}
 
@@ -248,6 +250,9 @@ function HomeContent() {
             </div>
           </div>
         </section>
+
+        {/* ==================== SOCIAL PROOF ==================== */}
+        <SocialProof />
 
         {/* ==================== WHY THIS TOOL ==================== */}
         <section className="px-4 py-20 md:py-24 md:px-8 lg:px-12">

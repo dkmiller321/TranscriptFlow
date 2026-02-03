@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { TranscriptSegment } from '@/lib/youtube/types';
@@ -38,6 +39,11 @@ export function TranscriptViewer({ segments, plainText }: TranscriptViewerProps)
   }, [plainText, searchQuery]);
 
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2, ease: 'easeOut' }}
+    >
     <Card className="bg-card/50 backdrop-blur-sm border-border/50 shadow-lg overflow-hidden">
       <CardHeader className="pb-4 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -161,5 +167,6 @@ export function TranscriptViewer({ segments, plainText }: TranscriptViewerProps)
         </div>
       </CardContent>
     </Card>
+    </motion.div>
   );
 }
