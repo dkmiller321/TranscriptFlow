@@ -123,7 +123,7 @@ export default function SignUpPage() {
 
         <p className="text-center text-sm text-muted-foreground mt-6">
           Already have an account?{' '}
-          <Link href={ROUTES.LOGIN} className="text-forest-400 hover:text-forest-500 hover:underline transition-colors">
+          <Link href={ROUTES.LOGIN} className="text-primary hover:text-primary/80 hover:underline transition-colors font-medium">
             Sign in
           </Link>
         </p>

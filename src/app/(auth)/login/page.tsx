@@ -76,7 +76,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-muted-foreground mt-6">
           Don&apos;t have an account?{' '}
-          <Link href={ROUTES.SIGNUP} className="text-forest-400 hover:text-forest-500 hover:underline transition-colors">
+          <Link href={ROUTES.SIGNUP} className="text-primary hover:text-primary/80 hover:underline transition-colors font-medium">
             Sign up
           </Link>
         </p>

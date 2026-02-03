@@ -22,8 +22,8 @@ export function Logo({ size = 'md', showText = true, className }: LogoProps) {
     <div className={cn('flex items-center', gap, className)}>
       <LogoMark size={icon} />
       {showText && (
-        <span className={cn('font-display font-semibold tracking-tight', text)}>
-          <span className="bg-gradient-to-r from-sage-400 via-forest-400 to-sage-400 bg-clip-text text-transparent">
+        <span className={cn('font-display font-bold tracking-tight', text)}>
+          <span className="bg-gradient-to-r from-[hsl(152,60%,50%)] via-[hsl(165,70%,48%)] to-[hsl(180,60%,45%)] bg-clip-text text-transparent">
             Transcript
           </span>
           <span className="text-foreground">Flow</span>
@@ -50,11 +50,17 @@ export function LogoMark({ size = 32, className }: LogoMarkProps) {
       aria-label="TranscriptFlow logo"
     >
       <defs>
-        {/* Main gradient - Eucalyptus Grove palette */}
+        {/* Main gradient - Teal/Cyan spectrum */}
         <linearGradient id="logo-gradient-main" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#B2AC88" />
-          <stop offset="50%" stopColor="#4B6E48" />
-          <stop offset="100%" stopColor="#B2AC88" />
+          <stop offset="0%" stopColor="hsl(152, 60%, 50%)" />
+          <stop offset="50%" stopColor="hsl(165, 70%, 48%)" />
+          <stop offset="100%" stopColor="hsl(180, 60%, 45%)" />
+        </linearGradient>
+
+        {/* Electric accent gradient */}
+        <linearGradient id="logo-gradient-electric" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="hsl(165, 100%, 50%)" />
+          <stop offset="100%" stopColor="hsl(180, 90%, 50%)" />
         </linearGradient>
 
         {/* Glow effect */}
@@ -66,18 +72,18 @@ export function LogoMark({ size = 32, className }: LogoMarkProps) {
           </feMerge>
         </filter>
 
-        {/* Subtle inner shadow for depth */}
-        <filter id="logo-inner-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feOffset dx="0" dy="1" />
-          <feGaussianBlur stdDeviation="1" result="offset-blur" />
-          <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" />
-          <feFlood floodColor="black" floodOpacity="0.2" result="color" />
-          <feComposite operator="in" in="color" in2="inverse" result="shadow" />
-          <feComposite operator="over" in="shadow" in2="SourceGraphic" />
+        {/* Enhanced glow for play button */}
+        <filter id="logo-glow-intense" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
         </filter>
       </defs>
 
-      {/* Background rounded square */}
+      {/* Background rounded square with gradient fill */}
       <rect
         x="2"
         y="2"
@@ -85,7 +91,7 @@ export function LogoMark({ size = 32, className }: LogoMarkProps) {
         height="44"
         rx="12"
         fill="url(#logo-gradient-main)"
-        opacity="0.15"
+        opacity="0.1"
       />
 
       {/* Rounded square border with gradient */}
@@ -98,7 +104,7 @@ export function LogoMark({ size = 32, className }: LogoMarkProps) {
         fill="none"
         stroke="url(#logo-gradient-main)"
         strokeWidth="1.5"
-        opacity="0.5"
+        opacity="0.4"
       />
 
       {/* Text lines representing transcript - flowing effect */}
@@ -150,13 +156,13 @@ export function LogoMark({ size = 32, className }: LogoMarkProps) {
       {/* Play button / Flow arrow - indicates video + motion */}
       <path
         d="M32 17 L40 24 L32 31 Z"
-        fill="url(#logo-gradient-main)"
-        filter="url(#logo-inner-shadow)"
+        fill="url(#logo-gradient-electric)"
+        filter="url(#logo-glow-intense)"
       />
 
-      {/* Flowing dots representing data flow */}
-      <circle cx="36" cy="17" r="1.5" fill="url(#logo-gradient-main)" opacity="0.5" />
-      <circle cx="39" cy="20" r="1" fill="url(#logo-gradient-main)" opacity="0.3" />
+      {/* Flowing dots representing data flow - electric accent */}
+      <circle cx="36" cy="16" r="1.5" fill="url(#logo-gradient-electric)" opacity="0.6" />
+      <circle cx="40" cy="19" r="1" fill="url(#logo-gradient-electric)" opacity="0.4" />
     </svg>
   );
 }
@@ -173,8 +179,13 @@ export function LogoFavicon({ size = 32 }: { size?: number }) {
     >
       <defs>
         <linearGradient id="favicon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#B2AC88" />
-          <stop offset="100%" stopColor="#4B6E48" />
+          <stop offset="0%" stopColor="hsl(152, 60%, 50%)" />
+          <stop offset="50%" stopColor="hsl(165, 70%, 48%)" />
+          <stop offset="100%" stopColor="hsl(180, 60%, 45%)" />
+        </linearGradient>
+        <linearGradient id="favicon-gradient-light" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="hsl(165, 100%, 55%)" />
+          <stop offset="100%" stopColor="hsl(180, 90%, 55%)" />
         </linearGradient>
       </defs>
 
@@ -183,10 +194,10 @@ export function LogoFavicon({ size = 32 }: { size?: number }) {
 
       {/* Simplified text lines */}
       <rect x="6" y="9" width="12" height="2.5" rx="1.25" fill="white" />
-      <rect x="6" y="13.5" width="9" height="2.5" rx="1.25" fill="white" opacity="0.8" />
-      <rect x="6" y="18" width="10" height="2.5" rx="1.25" fill="white" opacity="0.6" />
+      <rect x="6" y="13.5" width="9" height="2.5" rx="1.25" fill="white" opacity="0.85" />
+      <rect x="6" y="18" width="10" height="2.5" rx="1.25" fill="white" opacity="0.7" />
 
-      {/* Play arrow */}
+      {/* Play arrow with glow effect */}
       <path d="M20 11 L26 16 L20 21 Z" fill="white" />
     </svg>
   );

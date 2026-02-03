@@ -1,18 +1,18 @@
 import type { Metadata } from 'next';
-import { Sora, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
+import { Syne, Inter, JetBrains_Mono } from 'next/font/google';
 import { Footer } from '@/components/layout/Footer';
 import './globals.css';
 
-// Display font - distinctive, geometric, modern
-const sora = Sora({
+// Display font - bold, architectural, distinctive
+const syne = Syne({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-display',
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700', '800'],
 });
 
-// Body font - clean, highly readable, professional
-const plusJakarta = Plus_Jakarta_Sans({
+// Body font - refined, highly readable, modern
+const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-sans',
@@ -79,7 +79,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sora.variable} ${plusJakarta.variable} ${jetbrainsMono.variable}`}
+      className={`${syne.variable} ${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <head>

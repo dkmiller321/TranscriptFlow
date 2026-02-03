@@ -20,7 +20,7 @@ export default function AppleIcon() {
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: 40,
-          background: 'linear-gradient(135deg, #B2AC88 0%, #4B6E48 100%)',
+          background: 'linear-gradient(135deg, #34d399 0%, #14b8a6 50%, #06b6d4 100%)',
         }}
       >
         {/* Text lines */}
