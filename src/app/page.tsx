@@ -13,6 +13,7 @@ import { TranscriptSkeleton } from '@/components/features/TranscriptSkeleton';
 import { SocialProof } from '@/components/features/SocialProof';
 import { useExtraction } from '@/hooks/useExtraction';
 import { useChannelExtraction } from '@/hooks/useChannelExtraction';
+import { useUserTier } from '@/hooks/useUserTier';
 import { Spinner } from '@/components/ui/Spinner';
 import AnimatedBackground from '@/components/ui/AnimatedBackground';
 import GlassCard from '@/components/ui/GlassCard';
@@ -48,6 +49,8 @@ function HomeContent() {
     cancel: cancelChannel,
     reset: resetChannel,
   } = useChannelExtraction();
+
+  const { tier, limits } = useUserTier();
 
   const isLoading = isVideoLoading || isChannelLoading;
   const error = videoError || (channelError && !isRetrying ? channelError : null);
@@ -134,6 +137,8 @@ function HomeContent() {
                   isLoading={isLoading}
                   ctaText="Get transcript"
                   placeholder="Paste a YouTube URL here..."
+                  maxChannelVideos={limits.maxChannelVideos}
+                  tierName={tier}
                 />
               </GlassCard>
             </div>

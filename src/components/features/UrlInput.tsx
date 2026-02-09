@@ -13,16 +13,32 @@ interface UrlInputProps {
   isLoading?: boolean;
   ctaText?: string;
   placeholder?: string;
+  maxChannelVideos?: number;
+  tierName?: string;
 }
 
-export function UrlInput({ onSubmit, onChannelSubmit, isLoading, ctaText, placeholder }: UrlInputProps) {
+const UPSELL_INFO: Record<string, { nextTier: string; nextLimit: number } | null> = {
+  free: { nextTier: 'Pro', nextLimit: 25 },
+  pro: { nextTier: 'Business', nextLimit: 500 },
+  business: null,
+};
+
+export function UrlInput({ onSubmit, onChannelSubmit, isLoading, ctaText, placeholder, maxChannelVideos, tierName }: UrlInputProps) {
+  const effectiveMax = maxChannelVideos ?? CHANNEL_LIMITS.MAX_VIDEOS;
+  const clampedDefault = Math.min(CHANNEL_LIMITS.DEFAULT_VIDEOS, effectiveMax);
+
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [isChannel, setIsChannel] = useState(false);
-  const [videoLimit, setVideoLimit] = useState<number>(CHANNEL_LIMITS.DEFAULT_VIDEOS);
+  const [videoLimit, setVideoLimit] = useState<number>(clampedDefault);
   const [outputFormat, setOutputFormat] = useState<ChannelOutputFormat>('combined');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Clamp videoLimit when tier-based max changes
+  useEffect(() => {
+    setVideoLimit((prev) => Math.min(prev, effectiveMax));
+  }, [effectiveMax]);
 
   useEffect(() => {
     const trimmedUrl = url.trim();
@@ -203,8 +219,8 @@ export function UrlInput({ onSubmit, onChannelSubmit, isLoading, ctaText, placeh
               <input
                 type="range"
                 min={CHANNEL_LIMITS.MIN_VIDEOS}
-                max={CHANNEL_LIMITS.MAX_VIDEOS}
-                step={10}
+                max={effectiveMax}
+                step={effectiveMax <= 25 ? 5 : 10}
                 value={videoLimit}
                 onChange={(e) => setVideoLimit(Number(e.target.value))}
                 className={cn(
@@ -229,14 +245,45 @@ export function UrlInput({ onSubmit, onChannelSubmit, isLoading, ctaText, placeh
               <div
                 className="absolute top-0 left-0 h-2 rounded-full bg-gradient-to-r from-primary/60 to-primary pointer-events-none"
                 style={{
-                  width: `${((videoLimit - CHANNEL_LIMITS.MIN_VIDEOS) / (CHANNEL_LIMITS.MAX_VIDEOS - CHANNEL_LIMITS.MIN_VIDEOS)) * 100}%`,
+                  width: `${((videoLimit - CHANNEL_LIMITS.MIN_VIDEOS) / (effectiveMax - CHANNEL_LIMITS.MIN_VIDEOS)) * 100}%`,
                 }}
               />
             </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span>{CHANNEL_LIMITS.MIN_VIDEOS}</span>
-              <span>{CHANNEL_LIMITS.MAX_VIDEOS}</span>
+              <span className="flex items-center gap-1.5">
+                {effectiveMax}
+                {tierName && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                    {tierName}
+                  </span>
+                )}
+              </span>
             </div>
+            {/* Upgrade nudge — shown when slider is at max and there's a higher tier */}
+            {tierName && videoLimit >= effectiveMax && UPSELL_INFO[tierName] && (
+              <a
+                href="/pricing"
+                className={cn(
+                  "flex items-center justify-center gap-1.5 mt-1 py-1.5 px-3 rounded-lg",
+                  "text-xs font-medium",
+                  "bg-gradient-to-r from-primary/[0.06] to-primary/[0.12]",
+                  "border border-primary/15",
+                  "text-primary hover:text-primary/90",
+                  "hover:from-primary/[0.1] hover:to-primary/[0.18]",
+                  "transition-all duration-200",
+                  "animate-in fade-in slide-in-from-top-1 duration-300"
+                )}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                Need more? {UPSELL_INFO[tierName]!.nextTier} supports up to {UPSELL_INFO[tierName]!.nextLimit} videos
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </a>
+            )}
           </div>
 
           {/* Output format toggle */}
