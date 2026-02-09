@@ -90,12 +90,28 @@ async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSe
   } catch (error) {
     if (error instanceof Error) {
       console.error(`[Transcript] Error fetching transcript for ${videoId}:`, error.message);
+
+      // Check for rate limiting errors
+      if (error.message.includes('too many requests') || error.message.includes('TooManyRequest')) {
+        throw new Error(
+          'YouTube is temporarily limiting requests. Please wait a moment and try again.'
+        );
+      }
+
       // Check for common YouTube transcript errors
       if (error.message.includes('disabled') || error.message.includes('Transcript is disabled') || error.message.includes('No transcript')) {
         throw new Error(
           'No transcript available for this video. The video may have captions disabled or restricted.'
         );
       }
+
+      // Check for network/proxy errors
+      if (error.message.includes('ECONNREFUSED') || error.message.includes('ETIMEDOUT')) {
+        throw new Error(
+          'Connection failed. Please check your internet connection and try again.'
+        );
+      }
+
       throw error;
     }
     throw new Error('Failed to fetch transcript');
