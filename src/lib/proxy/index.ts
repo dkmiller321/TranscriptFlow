@@ -2,48 +2,96 @@ import 'server-only';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import nodeFetch, { RequestInit as NodeFetchRequestInit } from 'node-fetch';
 
+// Webshare rotating residential proxy pool
+const WEBSHARE_PROXY_POOL = [
+  'lxlnlqzu-1',  // Pakistan
+  'lxlnlqzu-2',  // Korea
+  'lxlnlqzu-3',  // Taiwan
+  'lxlnlqzu-4',  // Poland
+  'lxlnlqzu-5',  // Belgium
+  'lxlnlqzu-6',  // Korea
+  'lxlnlqzu-7',  // Taiwan
+  'lxlnlqzu-8',  // France
+  'lxlnlqzu-9',  // Japan
+  'lxlnlqzu-10', // Malaysia
+];
+
+// Track current proxy index (in-memory, resets on server restart)
+let currentProxyIndex = 0;
+let failedProxies = new Set<number>();
+
 interface ProxyConfig {
   type: string;
   username: string;
   password: string;
   server: string;
-  isResidential: boolean;
 }
 
-function getProxyConfig(): ProxyConfig | null {
+/**
+ * Get the next available proxy, cycling through the pool
+ */
+function getNextProxy(): { username: string; index: number } | null {
+  // If all proxies have failed, reset and try again
+  if (failedProxies.size >= WEBSHARE_PROXY_POOL.length) {
+    console.log('[Proxy] All proxies failed, resetting pool');
+    failedProxies.clear();
+  }
+
+  // Find next non-failed proxy
+  for (let i = 0; i < WEBSHARE_PROXY_POOL.length; i++) {
+    const index = (currentProxyIndex + i) % WEBSHARE_PROXY_POOL.length;
+    if (!failedProxies.has(index)) {
+      currentProxyIndex = (index + 1) % WEBSHARE_PROXY_POOL.length;
+      return { username: WEBSHARE_PROXY_POOL[index], index };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Mark a proxy as failed (temporarily)
+ */
+export function markProxyFailed(index: number): void {
+  failedProxies.add(index);
+  console.log(`[Proxy] Marked proxy ${index} (${WEBSHARE_PROXY_POOL[index]}) as failed. Failed count: ${failedProxies.size}/${WEBSHARE_PROXY_POOL.length}`);
+}
+
+/**
+ * Reset failed proxies (call periodically or after successful requests)
+ */
+export function resetFailedProxies(): void {
+  failedProxies.clear();
+}
+
+function getProxyConfig(specificIndex?: number): ProxyConfig | null {
   const proxyType = process.env.PROXY_TYPE;
-  const username = process.env.PROXY_USERNAME;
   const password = process.env.PROXY_PASSWORD;
 
-  if (!proxyType || !username || !password) {
+  if (!proxyType || !password) {
     return null;
   }
 
   let server: string;
-  let isResidential = false;
+  let username: string;
 
   switch (proxyType.toLowerCase()) {
     case 'webshare':
-      // Datacenter proxy - more likely to be rate limited
       server = 'p.webshare.io:80';
-      break;
-    case 'webshare-residential':
-      // Residential rotating proxy - better for YouTube
-      server = process.env.PROXY_SERVER || 'proxy.webshare.io:80';
-      isResidential = true;
-      break;
-    case 'packetstream':
-      server = process.env.PROXY_SERVER || 'proxy.packetstream.io:31112';
-      isResidential = true;
-      break;
-    case 'brightdata':
-      server = process.env.PROXY_SERVER || 'brd.superproxy.io:22225';
-      isResidential = true;
+      // Use pool rotation for webshare
+      if (specificIndex !== undefined) {
+        username = WEBSHARE_PROXY_POOL[specificIndex];
+      } else {
+        const next = getNextProxy();
+        if (!next) return null;
+        username = next.username;
+      }
       break;
     case 'generic':
       server = process.env.PROXY_SERVER || '';
-      if (!server) {
-        console.warn('[Proxy] Generic proxy type requires PROXY_SERVER');
+      username = process.env.PROXY_USERNAME || '';
+      if (!server || !username) {
+        console.warn('[Proxy] Generic proxy type requires PROXY_SERVER and PROXY_USERNAME');
         return null;
       }
       break;
@@ -52,18 +100,18 @@ function getProxyConfig(): ProxyConfig | null {
       return null;
   }
 
-  return { type: proxyType, username, password, server, isResidential };
+  return { type: proxyType, username, password, server };
 }
 
-export function createProxyAgent(): HttpsProxyAgent<string> | undefined {
-  const config = getProxyConfig();
+export function createProxyAgent(proxyIndex?: number): HttpsProxyAgent<string> | undefined {
+  const config = getProxyConfig(proxyIndex);
 
   if (!config) {
     return undefined;
   }
 
   const proxyUrl = `http://${config.username}:${config.password}@${config.server}`;
-  console.log(`[Proxy] Using ${config.type} proxy via ${config.server}${config.isResidential ? ' (residential)' : ''}`);
+  console.log(`[Proxy] Using ${config.type} proxy: ${config.username} via ${config.server}`);
 
   return new HttpsProxyAgent(proxyUrl);
 }
@@ -94,19 +142,34 @@ async function sleep(ms: number): Promise<void> {
 
 /**
  * Create a proxied fetch function for youtube-transcript-plus
- * Uses node-fetch which properly supports HTTP agents for proxying
- * Includes retry logic with exponential backoff
+ * Cycles through proxy pool on failures/rate limits
  */
 export function createProxiedFetch(): (params: FetchParams) => Promise<Response> {
-  const agent = createProxyAgent();
-  const maxRetries = 3;
+  // Track which proxy we're using for this fetch session
+  let currentAgent: HttpsProxyAgent<string> | undefined;
+  let currentProxyIdx: number = -1;
+
+  const getAgent = () => {
+    const next = getNextProxy();
+    if (!next) {
+      // All proxies exhausted, reset and try first one
+      resetFailedProxies();
+      const retry = getNextProxy();
+      if (!retry) return undefined;
+      currentProxyIdx = retry.index;
+      return createProxyAgent(retry.index);
+    }
+    currentProxyIdx = next.index;
+    return createProxyAgent(next.index);
+  };
+
+  currentAgent = getAgent();
 
   return async (params: FetchParams): Promise<Response> => {
     const { url, method = 'GET', body, headers = {} } = params;
+    const maxProxyAttempts = WEBSHARE_PROXY_POOL.length;
 
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
+    for (let proxyAttempt = 0; proxyAttempt < maxProxyAttempts; proxyAttempt++) {
       try {
         const fetchOptions: NodeFetchRequestInit = {
           method,
@@ -117,34 +180,41 @@ export function createProxiedFetch(): (params: FetchParams) => Promise<Response>
             ...headers,
           },
           body: body || undefined,
-          agent: agent,
+          agent: currentAgent,
         };
 
         const response = await nodeFetch(url, fetchOptions);
 
-        // Check for rate limiting responses
-        if (response.status === 429 || response.status === 503) {
-          const retryAfter = response.headers.get('retry-after');
-          const delayMs = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000;
-          console.log(`[Proxy] Rate limited (${response.status}), waiting ${delayMs}ms before retry ${attempt + 1}/${maxRetries}`);
-          await sleep(delayMs);
+        // Check for rate limiting or errors that suggest proxy issue
+        if (response.status === 429 || response.status === 503 || response.status === 403) {
+          console.log(`[Proxy] Got ${response.status}, cycling to next proxy (attempt ${proxyAttempt + 1}/${maxProxyAttempts})`);
+          if (currentProxyIdx >= 0) {
+            markProxyFailed(currentProxyIdx);
+          }
+          currentAgent = getAgent();
+          await sleep(500); // Brief pause before trying next proxy
           continue;
         }
 
-        // Convert node-fetch Response to standard Web API Response
+        // Success - return the response
         return response as unknown as Response;
       } catch (error) {
-        lastError = error as Error;
-        const delayMs = Math.pow(2, attempt) * 1000;
-        console.log(`[Proxy] Request failed (attempt ${attempt + 1}/${maxRetries}): ${lastError.message}`);
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.log(`[Proxy] Request failed with proxy ${currentProxyIdx}: ${errorMsg}`);
 
-        if (attempt < maxRetries - 1) {
-          await sleep(delayMs);
+        // Mark current proxy as failed and get next one
+        if (currentProxyIdx >= 0) {
+          markProxyFailed(currentProxyIdx);
+        }
+        currentAgent = getAgent();
+
+        if (proxyAttempt < maxProxyAttempts - 1) {
+          await sleep(500);
         }
       }
     }
 
-    throw lastError || new Error('All retry attempts failed');
+    throw new Error('All proxies exhausted. Please try again later.');
   };
 }
 

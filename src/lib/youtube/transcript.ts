@@ -1,11 +1,10 @@
 import 'server-only';
 import { fetchTranscript as fetchYouTubeTranscript } from 'youtube-transcript-plus';
-import { Innertube } from 'youtubei.js';
 import type { TranscriptSegment, TranscriptResult, VideoInfo } from './types';
 import { extractVideoId, getThumbnailUrl } from './parser';
 import { formatTimestamp } from '@/lib/utils/formatters';
 import { createClient } from '@/lib/supabase/server';
-import { createProxiedFetch, isProxyConfigured } from '@/lib/proxy';
+import { createProxiedFetch, isProxyConfigured, resetFailedProxies } from '@/lib/proxy';
 
 /**
  * Check if transcript exists in cache
@@ -58,116 +57,73 @@ async function saveCachedTranscript(videoId: string, segments: TranscriptSegment
 }
 
 /**
- * Primary method: youtube-transcript-plus with proxy support
- */
-async function fetchWithYoutubeTranscriptPlus(videoId: string): Promise<TranscriptSegment[]> {
-  // Create proxied fetch if proxy is configured
-  const proxiedFetch = isProxyConfigured() ? createProxiedFetch() : undefined;
-
-  if (proxiedFetch) {
-    console.log(`[Transcript] Trying youtube-transcript-plus for ${videoId} via proxy`);
-  } else {
-    console.log(`[Transcript] Trying youtube-transcript-plus for ${videoId} (no proxy)`);
-  }
-
-  const transcriptItems = await fetchYouTubeTranscript(videoId, {
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    videoFetch: proxiedFetch,
-    transcriptFetch: proxiedFetch,
-    playerFetch: proxiedFetch,
-  });
-
-  if (!transcriptItems || transcriptItems.length === 0) {
-    throw new Error('No transcript segments returned');
-  }
-
-  console.log(`[Transcript] youtube-transcript-plus succeeded: ${transcriptItems.length} segments`);
-
-  return transcriptItems.map((item) => ({
-    text: item.text,
-    offset: item.offset,
-    duration: item.duration,
-  }));
-}
-
-/**
- * Fallback method: youtubei.js (Innertube API - no proxy needed)
- */
-async function fetchWithYoutubei(videoId: string): Promise<TranscriptSegment[]> {
-  console.log(`[Transcript] Trying youtubei.js (Innertube) for ${videoId}`);
-
-  const youtube = await Innertube.create({
-    retrieve_player: false,
-  });
-
-  const info = await youtube.getInfo(videoId);
-  const transcriptInfo = await info.getTranscript();
-
-  if (!transcriptInfo?.transcript?.content?.body?.initial_segments) {
-    throw new Error('No transcript available via Innertube');
-  }
-
-  const segments = transcriptInfo.transcript.content.body.initial_segments;
-
-  console.log(`[Transcript] youtubei.js succeeded: ${segments.length} segments`);
-
-  // Filter to only transcript segments (not section headers) and map to our format
-  const result: TranscriptSegment[] = [];
-  for (const segment of segments) {
-    // Skip section headers - they don't have start_ms
-    if (!('start_ms' in segment)) continue;
-
-    const seg = segment as { snippet?: { text?: string }; start_ms: string; end_ms: string };
-    result.push({
-      text: seg.snippet?.text || '',
-      offset: parseInt(seg.start_ms || '0', 10),
-      duration: parseInt(seg.end_ms || '0', 10) - parseInt(seg.start_ms || '0', 10),
-    });
-  }
-
-  return result;
-}
-
-/**
- * Fetch transcript with fallback strategy
+ * Fetch transcript from YouTube using youtube-transcript-plus with proxy cycling
  */
 async function fetchTranscriptFromYouTube(videoId: string): Promise<TranscriptSegment[]> {
-  const errors: string[] = [];
-
-  // Try primary method first
   try {
-    return await fetchWithYoutubeTranscriptPlus(videoId);
+    // Create proxied fetch if proxy is configured (with automatic proxy cycling)
+    const proxiedFetch = isProxyConfigured() ? createProxiedFetch() : undefined;
+
+    if (proxiedFetch) {
+      console.log(`[Transcript] Fetching transcript for ${videoId} via proxy pool`);
+    } else {
+      console.log(`[Transcript] Fetching transcript for ${videoId} (no proxy)`);
+    }
+
+    const transcriptItems = await fetchYouTubeTranscript(videoId, {
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      videoFetch: proxiedFetch,
+      transcriptFetch: proxiedFetch,
+      playerFetch: proxiedFetch,
+    });
+
+    if (!transcriptItems || transcriptItems.length === 0) {
+      throw new Error('No transcript segments returned');
+    }
+
+    console.log(`[Transcript] Successfully fetched ${transcriptItems.length} segments for ${videoId}`);
+
+    // Reset failed proxies on success (they might be working again)
+    resetFailedProxies();
+
+    return transcriptItems.map((item) => ({
+      text: item.text,
+      offset: item.offset,
+      duration: item.duration,
+    }));
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.log(`[Transcript] youtube-transcript-plus failed: ${message}`);
-    errors.push(`youtube-transcript-plus: ${message}`);
+    if (error instanceof Error) {
+      console.error(`[Transcript] Error fetching transcript for ${videoId}:`, error.message);
+
+      // Check for rate limiting errors
+      if (error.message.includes('too many requests') || error.message.includes('TooManyRequest')) {
+        throw new Error('YouTube is temporarily limiting requests. Please wait a moment and try again.');
+      }
+
+      // Check for proxy exhaustion
+      if (error.message.includes('All proxies exhausted')) {
+        throw new Error('All proxy servers are temporarily unavailable. Please try again in a few minutes.');
+      }
+
+      // Check for common YouTube transcript errors
+      if (error.message.includes('disabled') || error.message.includes('Transcript is disabled') || error.message.includes('No transcript')) {
+        throw new Error('No transcript available for this video. The video may have captions disabled or restricted.');
+      }
+
+      // Check for video unavailable (often means proxy auth failed)
+      if (error.message.includes('unavailable') || error.message.includes('removed')) {
+        throw new Error('Could not access video. Please try again.');
+      }
+
+      // Check for network/proxy errors
+      if (error.message.includes('ECONNREFUSED') || error.message.includes('ETIMEDOUT')) {
+        throw new Error('Connection failed. Please check your internet connection and try again.');
+      }
+
+      throw error;
+    }
+    throw new Error('Failed to fetch transcript');
   }
-
-  // Try fallback method
-  try {
-    return await fetchWithYoutubei(videoId);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.log(`[Transcript] youtubei.js failed: ${message}`);
-    errors.push(`youtubei.js: ${message}`);
-  }
-
-  // All methods failed - analyze errors and throw appropriate message
-  const allErrors = errors.join('; ');
-
-  if (allErrors.includes('too many requests') || allErrors.includes('TooManyRequest')) {
-    throw new Error('YouTube is temporarily limiting requests. Please wait a moment and try again.');
-  }
-
-  if (allErrors.includes('disabled') || allErrors.includes('No transcript')) {
-    throw new Error('No transcript available for this video. The video may have captions disabled or restricted.');
-  }
-
-  if (allErrors.includes('unavailable') || allErrors.includes('removed')) {
-    throw new Error('This video is unavailable or may be region-restricted.');
-  }
-
-  throw new Error('Failed to fetch transcript. Please try again later.');
 }
 
 export async function fetchTranscript(videoIdOrUrl: string): Promise<TranscriptResult> {
