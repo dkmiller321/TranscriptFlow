@@ -16,7 +16,7 @@ export class SignupPage {
   constructor(page: Page) {
     this.page = page;
 
-    this.heading = page.locator('text=Create account');
+    this.heading = page.locator('h1:has-text("Create account")');
     this.subtitle = page.locator('text=Start extracting transcripts today');
     this.emailInput = page.locator('#email');
     this.passwordInput = page.locator('#password');

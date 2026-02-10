@@ -58,14 +58,15 @@ function SettingsContent() {
 
   const checkoutSuccess = searchParams.get('checkout') === 'success';
 
-  // Show success message on checkout completion
+  // Show success message on checkout completion (wait for auth to resolve
+  // so the message timer doesn't expire while the loading spinner is shown)
   useEffect(() => {
-    if (checkoutSuccess) {
+    if (checkoutSuccess && !authLoading && user) {
       showMessage('success', 'Subscription activated successfully!');
       // Clear the query param
       router.replace('/settings');
     }
-  }, [checkoutSuccess, router]);
+  }, [checkoutSuccess, authLoading, user, router]);
 
   // Fetch user settings
   const fetchSettings = useCallback(async () => {

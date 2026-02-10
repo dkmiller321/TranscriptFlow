@@ -16,7 +16,7 @@ export class PricingPage {
   constructor(page: Page) {
     this.page = page;
 
-    this.heading = page.locator('text=Simple, Transparent Pricing');
+    this.heading = page.locator('h1').first();
     this.subtitle = page.locator('text=Choose the plan that fits your needs');
     this.monthlyToggle = page.locator('button:has-text("Monthly")');
     this.yearlyToggle = page.locator('button:has-text("Yearly")');
