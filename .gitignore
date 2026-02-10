@@ -39,7 +39,11 @@ next-env.d.ts
 # Testing
 coverage/
 test-results/
+/test-results/
+e2e/test-results/
+e2e/screenshots/
 playwright-report/
+blob-report/
 playwright/.cache/
 
 # Misc
