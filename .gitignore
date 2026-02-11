@@ -49,6 +49,10 @@ playwright/.cache/
 # Misc
 *.log
 .claude/
+.mcp.json
+claude-code-prompt.md
+playwrightSetup.md
+specs/
 
 .vercel
 

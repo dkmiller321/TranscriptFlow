@@ -5,7 +5,8 @@ import { TEST_VIDEOS, MOCK_TRANSCRIPT_RESPONSE } from './fixtures/test-data';
 test.describe('Transcript Display & Interaction', () => {
   let homePage: HomePage;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, browserName }) => {
+    test.slow();
     homePage = new HomePage(page);
 
     // Mock the extract API for all tests in this suite
