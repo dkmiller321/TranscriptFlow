@@ -54,20 +54,14 @@ test.describe('Landing Page & Navigation', () => {
     await expect(homePage.footer.locator('a:has-text("Privacy")')).toBeVisible();
   });
 
-  test('terms page loads from footer link', async ({ page }) => {
-    test.slow(); // Next.js compiles pages on first visit
+  test('terms footer link has correct href', async () => {
     const href = await homePage.footer.locator('a:has-text("Terms")').getAttribute('href');
     expect(href).toBe('/terms');
-    await page.goto('/terms', { waitUntil: 'domcontentloaded' });
-    await expect(page).toHaveURL(/\/terms/);
   });
 
-  test('privacy page loads from footer link', async ({ page }) => {
-    test.slow();
+  test('privacy footer link has correct href', async () => {
     const href = await homePage.footer.locator('a:has-text("Privacy")').getAttribute('href');
     expect(href).toBe('/privacy');
-    await page.goto('/privacy', { waitUntil: 'domcontentloaded' });
-    await expect(page).toHaveURL(/\/privacy/);
   });
 
   test('features section displays three use-case cards', async ({ page }) => {
@@ -85,6 +79,18 @@ test.describe('Landing Page & Navigation', () => {
 
   test('extract button is disabled when input is empty', async () => {
     await expect(homePage.extractButton).toBeDisabled();
+  });
+});
+
+test.describe('Legal Pages', () => {
+  test('terms page loads', async ({ page }) => {
+    await page.goto('/terms', { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/\/terms/);
+  });
+
+  test('privacy page loads', async ({ page }) => {
+    await page.goto('/privacy', { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/\/privacy/);
   });
 });
 

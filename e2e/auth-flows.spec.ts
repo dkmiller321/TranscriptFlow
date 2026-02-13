@@ -53,6 +53,18 @@ test.describe('Login Page', () => {
   });
 
   test('successful login redirects to home', async ({ page }) => {
+    const mockUser = {
+      id: 'test-user-id',
+      aud: 'authenticated',
+      role: 'authenticated',
+      email: 'test@example.com',
+      email_confirmed_at: '2024-01-15T10:00:00.000Z',
+      app_metadata: { provider: 'email', providers: ['email'] },
+      user_metadata: {},
+      created_at: '2024-01-15T10:00:00.000Z',
+      updated_at: '2024-01-15T10:00:00.000Z',
+    };
+
     // Mock Supabase signInWithPassword to succeed
     await page.route('**/auth/v1/token**', async (route) => {
       await route.fulfill({
@@ -62,12 +74,9 @@ test.describe('Login Page', () => {
           access_token: 'mock-access-token',
           token_type: 'bearer',
           expires_in: 3600,
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
           refresh_token: 'mock-refresh-token',
-          user: {
-            id: 'test-user-id',
-            email: 'test@example.com',
-            email_confirmed_at: '2024-01-15T10:00:00.000Z',
-          },
+          user: mockUser,
         }),
       });
     });
@@ -77,11 +86,7 @@ test.describe('Login Page', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'test-user-id',
-          email: 'test@example.com',
-          email_confirmed_at: '2024-01-15T10:00:00.000Z',
-        }),
+        body: JSON.stringify(mockUser),
       });
     });
 
@@ -89,7 +94,8 @@ test.describe('Login Page', () => {
     await loginPage.passwordInput.fill('TestPassword123!');
     await loginPage.submitButton.click();
 
-    await expect(page).toHaveURL('/', { timeout: 15000 });
+    // Wait for redirect — dev server may be slow compiling the home page
+    await expect(page).toHaveURL('/', { timeout: 30000 });
   });
 
   test('sign up link navigates to signup page', async ({ page }) => {
